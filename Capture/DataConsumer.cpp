@@ -11,8 +11,8 @@ using namespace Wasapi;
 
 using namespace concurrency;
 
-#define MIN_AUDIO_THRESHOLD 400
-#define MAX_AUDIO_THRESHOLD	400
+#define MIN_AUDIO_THRESHOLD 200
+#define MAX_AUDIO_THRESHOLD	6400
 #define BUFFER_SIZE 5000
 
 #define DELAY_WINDOW_BEGIN 5
@@ -20,7 +20,7 @@ using namespace concurrency;
 #define DELAY_WINDOW_END 96
 #define TDE_WINDOW 200
 
-DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^ func) : m_numberOfDevices(nDevices), m_collector(collector), m_uiHandler(func), m_counter(0)
+DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^ func) : m_numberOfDevices(nDevices), m_collector(collector), m_uiHandler(func), m_counter(0), m_tick(0)
 {
 	m_devices = std::vector<DeviceInfo>(m_numberOfDevices);
 	m_audioDataFirst = std::vector<AudioItem*>(m_numberOfDevices, NULL);
@@ -81,6 +81,13 @@ void DataConsumer::Worker()
 			{
 			case 3: FlushBuffer(); break;
 			case 4: ProcessData(); break;
+			}
+
+			ULONGLONG tick = GetTickCount64();
+			if (tick - m_tick > 5000)
+			{
+				m_uiHandler(m_counter++, -3, res, packetCounts[0], packetCounts[1], 0, 0, 0, 44100);
+				m_tick = tick;
 			}
 
 			auto status = action->Status;
@@ -209,6 +216,7 @@ void DataConsumer::ProcessData()
 		}
 		if (sample) 
 		{ 
+			m_tick = GetTickCount64();
 			long align = CalculateTDE(posS);
 			/*
 			if (align != -99999)
@@ -224,6 +232,15 @@ void DataConsumer::ProcessData()
 				StoreData(s1, s2);
 			}
 			*/
+		}
+		else
+		{
+			ULONGLONG tick = GetTickCount64();
+			if (tick - m_tick > 1000)
+			{
+				m_uiHandler(m_counter++, -2, 0, 0, 0, 0, 0, 0, m_devices[0].GetSamplesPerSec());
+				m_tick = tick;
+			}
 		}
 
 		FlushBuffer();
@@ -306,12 +323,12 @@ long DataConsumer::CalculateTDE(size_t pos)
 	TimeDelayEstimation::SignalData data = TimeDelayEstimation::SignalData(&m_buffer[0][0], &m_buffer[1][0], pos, pos + TDE_WINDOW, false);
 	if (!data.Align((long)pos))
 	{
-		m_uiHandler(m_counter++, -999, -999, -999, 0, 0, 0, m_devices[0].GetSamplesPerSec());
+		m_uiHandler(m_counter++, -1, -999, -999, -999, 0, 0, 0, m_devices[0].GetSamplesPerSec());
 		return -99999;
 	}
 	if (!data.Align((long)pos + TDE_WINDOW))
 	{
-		m_uiHandler(m_counter++, 999, 999, 999, 0, 0, 0, m_devices[0].GetSamplesPerSec());
+		m_uiHandler(m_counter++, -1, 999, 999, 999, 0, 0, 0, m_devices[0].GetSamplesPerSec());
 		return -99999;
 	}
 
@@ -366,14 +383,13 @@ long DataConsumer::CalculateTDE(size_t pos)
 	}
 	delete v;
 
-	m_uiHandler(m_counter++, delay1, delay2, delay3, (int)data.Alignment(), (int)volume0, (int)volume1, m_devices[0].GetSamplesPerSec());
+	m_uiHandler(m_counter++, 0, delay1, delay2, delay3, (int)data.Alignment(), (int)volume0, (int)volume1, m_devices[0].GetSamplesPerSec());
 	return data.Alignment();
 }
 
 void DataConsumer::StoreData(String^ fileName, String^ data) 
 {
 	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
-
 	auto createFileTask = create_task(localFolder->CreateFileAsync(fileName, Windows::Storage::CreationCollisionOption::GenerateUniqueName));
 	createFileTask.then([data](StorageFile^ newFile) {
 		create_task(FileIO::AppendTextAsync(newFile, data));

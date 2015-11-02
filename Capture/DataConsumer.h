@@ -14,7 +14,7 @@ namespace Wasapi
 {
 	static Windows::Foundation::IAsyncAction^ WorkItem = nullptr;
 
-	public delegate void UIHandler(int, int, int, int, int, int, int, int);
+	public delegate void UIHandler(int, int, int, int, int, int, int, int, int);
 
 	ref class DataConsumer sealed
 	{
@@ -57,5 +57,7 @@ namespace Wasapi
 
 		UIHandler^ m_uiHandler;
 		int m_counter;
+
+		ULONGLONG m_tick;
 	};
 }

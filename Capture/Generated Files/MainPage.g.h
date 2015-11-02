@@ -40,6 +40,8 @@ namespace SoundCapture
         private: ::Windows::UI::Xaml::Controls::TextBlock^ text5;
         private: ::Windows::UI::Xaml::Controls::TextBlock^ text6;
         private: ::Windows::UI::Xaml::Controls::TextBlock^ text7;
+        private: ::Windows::UI::Xaml::Controls::TextBlock^ text8;
+        private: ::Windows::UI::Xaml::Controls::TextBlock^ text9;
         private: ::Windows::UI::Xaml::Controls::Canvas^ canvas;
     };
 }

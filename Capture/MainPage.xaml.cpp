@@ -50,15 +50,15 @@ void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int 
 	line->X2 = line->X1 + sin(ang) * length;
 	line->Y2 = line->Y1 + cos(ang) * length;
 	line->Stroke = color;
-	line->StrokeThickness = 3;
+	line->StrokeThickness = 1;
 	canvas->Children->Append(line);
 }
 
 void SoundCapture::MainPage::Start()
 {
-	Wasapi::UIHandler^ uiHandler = ref new Wasapi::UIHandler([this](int i0, int i1, int i2, int i3, int i4, int i5, int i6, int i7)
+	Wasapi::UIHandler^ uiHandler = ref new Wasapi::UIHandler([this](int i0, int i1, int i2, int i3, int i4, int i5, int i6, int i7, int i8)
 	{
-		auto uiDelegate = [this, i0, i1, i2, i3, i4, i5, i6, i7]()
+		auto uiDelegate = [this, i0, i1, i2, i3, i4, i5, i6, i7, i8]()
 		{
 			text1->Text = i0.ToString();
 			text2->Text = i1.ToString();
@@ -67,15 +67,18 @@ void SoundCapture::MainPage::Start()
 			text5->Text = i4.ToString();
 			text6->Text = i5.ToString();
 			text7->Text = i6.ToString();
-	
-			canvas->Children->Clear();
+			text8->Text = i7.ToString();
 
-			int vol = i5/50;
-			if (vol > 600) vol = 600;
+			int vol = i6/20;
+			if (vol > 800) vol = 800;
 
-			Direction(i7, 0.35, -1 * i1, 600, vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
-			Direction(i7, 0.35, -1 * i2, 650, vol, ref new SolidColorBrush(Windows::UI::Colors::Blue));
-			Direction(i7, 0.35, -1 * i3, 700, vol, ref new SolidColorBrush(Windows::UI::Colors::Green));
+			if (vol > 20)
+			{
+				Direction(i8, 0.35, -1 * i2, 600, vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
+				Direction(i8, 0.35, -1 * i3, 800, vol, ref new SolidColorBrush(Windows::UI::Colors::Blue));
+				Direction(i8, 0.35, -1 * i4, 1000, vol, ref new SolidColorBrush(Windows::UI::Colors::Green));
+			}
+			text9->Text = (canvas->Children->Size / 3).ToString();
 		};
 		auto handler = ref new Windows::UI::Core::DispatchedHandler(uiDelegate);
 		Dispatcher->RunAsync(Windows::UI::Core::CoreDispatcherPriority::Normal, handler);
@@ -91,4 +94,9 @@ void SoundCapture::MainPage::App_Resuming(Object^ sender, Object^ e)
 void SoundCapture::MainPage::App_Suspending(Object^ sender, SuspendingEventArgs^ e)
 {
 	m_wasapiEngine->Finish();
+}
+
+void SoundCapture::MainPage::Button_Click(Platform::Object^ sender, Windows::UI::Xaml::RoutedEventArgs^ e)
+{
+	canvas->Children->Clear();
 }
