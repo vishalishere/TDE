@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Common">
+      <UniqueIdentifier>1488efaf-bb44-46cf-98e3-588d51225dd2</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets">
+      <UniqueIdentifier>d431f150-d922-49a4-9b23-240eb841783c</UniqueIdentifier>
+      <Extensions>bmp;fbx;gif;jpg;jpeg;tga;tiff;tif;png</Extensions>
+    </Filter>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{b34fad5b-fd5f-47c7-8cee-4fefbc27ec94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Wasapi">
+      <UniqueIdentifier>{1ffc8865-c0d2-4f7e-a330-3b2561422d8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Buffering">
+      <UniqueIdentifier>{bac2d1fb-4c7a-4d68-9e05-354e9e1dbda2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="App.xaml.cpp" />
+    <ClCompile Include="MainPage.xaml.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="WASAPICapture.cpp">
+      <Filter>Engine\Wasapi</Filter>
+    </ClCompile>
+    <ClCompile Include="WASAPIEngine.cpp">
+      <Filter>Engine\Wasapi</Filter>
+    </ClCompile>
+    <ClCompile Include="WASAPIDevice.cpp">
+      <Filter>Engine\Wasapi</Filter>
+    </ClCompile>
+    <ClCompile Include="DataCollector.cpp">
+      <Filter>Engine\Buffering</Filter>
+    </ClCompile>
+    <ClCompile Include="DataConsumer.cpp">
+      <Filter>Engine\Buffering</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="App.xaml.h" />
+    <ClInclude Include="MainPage.xaml.h" />
+    <ClInclude Include="Common.h">
+      <Filter>Engine\Wasapi</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceState.h">
+      <Filter>Engine\Wasapi</Filter>
+    </ClInclude>
+    <ClInclude Include="WASAPICapture.h">
+      <Filter>Engine\Wasapi</Filter>
+    </ClInclude>
+    <ClInclude Include="WASAPIEngine.h">
+      <Filter>Engine\Wasapi</Filter>
+    </ClInclude>
+    <ClInclude Include="WASAPIDevice.h">
+      <Filter>Engine\Wasapi</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceInfo.h">
+      <Filter>Engine\Buffering</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioItem.h">
+      <Filter>Engine\Buffering</Filter>
+    </ClInclude>
+    <ClInclude Include="DataCollector.h">
+      <Filter>Engine\Buffering</Filter>
+    </ClInclude>
+    <ClInclude Include="DataConsumer.h">
+      <Filter>Engine\Buffering</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Assets\LockScreenLogo.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\SplashScreen.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Square150x150Logo.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Square44x44Logo.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\StoreLogo.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Wide310x150Logo.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Capture_TemporaryKey.pfx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="MainPage.xaml" />
+  </ItemGroup>
+</Project>
