@@ -68,14 +68,14 @@ void SoundCapture::MainPage::Start()
 			text7->Text = i6.ToString();
 			text8->Text = i7.ToString();
 
-			int vol = i6/200;
+			UINT64 vol = i6/200;
 			if (vol > 800) vol = 800;
 
 			if (vol > 20)
 			{
-				Direction(i8, 0.35, -1 * i2, 600, vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
-				Direction(i8, 0.35, -1 * i3, 800, vol, ref new SolidColorBrush(Windows::UI::Colors::Blue));
-				Direction(i8, 0.35, -1 * i4, 1000, vol, ref new SolidColorBrush(Windows::UI::Colors::Green));
+				Direction(i8, 0.35, -1 * i2, 600, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
+				Direction(i8, 0.35, -1 * i3, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Blue));
+				Direction(i8, 0.35, -1 * i4, 1000, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Green));
 			}
 			text9->Text = (canvas->Children->Size / 3).ToString();
 		};

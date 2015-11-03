@@ -15,21 +15,21 @@ TDE::TDE(size_t aMaxDelay)
 	}
 	else if (aMaxDelay < 10)
 	{
-		m_maxDelay = aMaxDelay;
+		m_maxDelay = (DelayType)aMaxDelay;
 		m_windowStart = 2;
-		m_windowEnd = 2 * aMaxDelay - 1;
+		m_windowEnd = 2 * (DelayType)aMaxDelay - 1;
 	}
 	else if (aMaxDelay < 20)
 	{
-		m_maxDelay = aMaxDelay;
+		m_maxDelay = (DelayType)aMaxDelay;
 		m_windowStart = 2;
-		m_windowEnd = 2 * aMaxDelay - 1;
+		m_windowEnd = 2 * (DelayType)aMaxDelay - 1;
 	}
 	else
 	{
-		m_maxDelay = aMaxDelay;
+		m_maxDelay = (DelayType)aMaxDelay;
 		m_windowStart = 5;
-		m_windowEnd = 2 * aMaxDelay - 4;
+		m_windowEnd = 2 * (DelayType)aMaxDelay - 4;
 	}
 }
 

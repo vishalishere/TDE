@@ -27,6 +27,7 @@ DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^
 	m_tick(0),
 	m_packetCounter(0),
 	m_discontinuityCounter(0),
+	m_dataRemovalCounter(0),
 	m_minAudioThreshold(MIN_AUDIO_THRESHOLD),
 	m_maxAudioThreshold(MAX_AUDIO_THRESHOLD),
 	m_delayWindow(DELAY_WINDOW_SIZE),
@@ -88,15 +89,27 @@ void DataConsumer::Worker()
 					m_audioDataLast[i] = last;
 				}
 			}
-			switch (HandlePackets())
-			{
-			case Status::DISCONTINUITY: 
-				FlushBuffer(); 
-				m_discontinuityCounter++;
-				break;
-			case Status::DATA_AVAILABLE: ProcessData(); break;
+			bool loop = true;
+			while(loop)
+			{ 
+				switch (HandlePackets())
+				{
+				case Status::ONLY_ONE_SAMPLE:
+					loop = false;
+					break;
+				case Status::DATA_REMOVED:
+					m_dataRemovalCounter++;
+					break;
+				case Status::DISCONTINUITY:
+					FlushBuffer();
+					m_discontinuityCounter++;
+					break;
+				case Status::DATA_AVAILABLE:
+					loop = ProcessData();
+					break;
+				}
 			}
-			HeartBeat(-3, 5000, m_packetCounter, m_discontinuityCounter);
+			HeartBeat(-3, 5000, m_packetCounter, m_discontinuityCounter, m_dataRemovalCounter);
 
 			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
 		}
@@ -178,7 +191,7 @@ DataConsumer::Status DataConsumer::HandlePackets()
 	return Status::DATA_AVAILABLE;
 }
 
-void DataConsumer::ProcessData()
+bool DataConsumer::ProcessData()
 {
 	size_t smallestBuffer = m_buffer[0][0].size();
 	for (size_t i = 0; i < m_numberOfDevices; i++)
@@ -239,14 +252,16 @@ void DataConsumer::ProcessData()
 					StoreData(s1, s2);
 				}
 			}
-			else HeartBeat(-1, 0, 0, 0);
+			else HeartBeat(-1, 0, 0, 0, 0);
 		}
-		else HeartBeat(-2, 1000, 0, 0);
+		else HeartBeat(-2, 1000, 0, 0, 0);
 			
 		FlushBuffer();
 		FlushCollector();		
 		m_collector->StoreData(true);
+		return false;
 	}
+	return true;
 }
 
 void DataConsumer::FlushPackets()
@@ -357,14 +372,15 @@ void DataConsumer::StoreData(String^ fileName, String^ data)
 	});	
 }
 
-void DataConsumer::HeartBeat(int status, int delta, int msg0, int msg1)
+void DataConsumer::HeartBeat(int status, int delta, int msg0, int msg1, int msg2)
 {
 	ULONGLONG tick = GetTickCount64();
 	if (tick - m_tick > delta)
 	{
-		m_uiHandler(m_counter++, status, msg0, msg1, 0, 0, 0, 0, 44100);
+		m_uiHandler(m_counter++, status, msg0, msg1, msg2, 0, 0, 0, 44100);
 		m_tick = tick;
 		m_packetCounter = 0;
 		m_discontinuityCounter = 0;
+		m_dataRemovalCounter = 0;
 	}
 }

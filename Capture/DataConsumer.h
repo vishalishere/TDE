@@ -41,10 +41,10 @@ namespace Wasapi
 	private:
 		~DataConsumer();
 
-		void HeartBeat(int status, int delta, int msg0, int msg1);
+		void HeartBeat(int status, int delta, int msg0, int msg1, int msg2);
 
 		Status HandlePackets();
-		void ProcessData();
+		bool ProcessData();
 
 		void FlushPackets();
 		void FlushBuffer();
@@ -74,6 +74,7 @@ namespace Wasapi
 		uint32 m_maxAudioThreshold;
 		uint32 m_packetCounter;
 		uint32 m_discontinuityCounter;
+		uint32 m_dataRemovalCounter;
 
 		size_t m_delayWindow;
 		size_t m_bufferSize;

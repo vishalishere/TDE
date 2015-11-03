@@ -62,22 +62,22 @@ SignalValue SignalData::Channel1(size_t position, DelayType delay) const
 
 bool SignalData::CalculateAlignment(size_t position, DelayType* alignment, UINT64* delta)
 {
-	long p = position;
+	DelayType p = (DelayType)position;
 
 	if (position >= m_channel0->size()) return false;
 	if (position >= m_channel1->size()) return false;
 
 	if (m_channel0->at(position).timestamp > m_channel1->at(position).timestamp)
 	{
-		while (m_channel1->at(p).timestamp < m_channel0->at(position).timestamp) { if (++p >= m_channel1->size()) return false;	}
+		while (m_channel1->at(p).timestamp < m_channel0->at(position).timestamp) { if (++p >= (DelayType)m_channel1->size()) return false;	}
 		if (p > 0 && m_channel0->at(position).timestamp - m_channel1->at(p - 1).timestamp > m_channel1->at(p).timestamp - m_channel0->at(position).timestamp) { p--; }
 	}
 	else if (m_channel0->at(position).timestamp < m_channel1->at(position).timestamp)
 	{
 		while (m_channel1->at(p).timestamp > m_channel0->at(position).timestamp) { if (--p < 0) return false; }
-		if (p < m_channel1->size() - 1 && m_channel0->at(position).timestamp - m_channel1->at(p).timestamp > m_channel1->at(p + 1).timestamp - m_channel0->at(position).timestamp) { p++; }
+		if (p < (DelayType)(m_channel1->size() - 1) && m_channel0->at(position).timestamp - m_channel1->at(p).timestamp > m_channel1->at(p + 1).timestamp - m_channel0->at(position).timestamp) { p++; }
 	}
-	if (alignment != NULL) *alignment = p - position;
+	if (alignment != NULL) *alignment = p - (DelayType)position;
 	if (delta != NULL) *delta = m_channel1->at(p).timestamp - m_channel0->at(position).timestamp;
 	return true;
 }
