@@ -14,17 +14,29 @@ using namespace concurrency;
 #define MIN_AUDIO_THRESHOLD 200
 #define MAX_AUDIO_THRESHOLD	6400
 #define BUFFER_SIZE 5000
-
-#define DELAY_WINDOW_BEGIN 5
 #define DELAY_WINDOW_SIZE 50
-#define DELAY_WINDOW_END 96
 #define TDE_WINDOW 200
+#define STORE_SAMPLE 0
+#define SAMPLE_FILE "SAMPLE.TXT"
 
-DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^ func) : m_numberOfDevices(nDevices), m_collector(collector), m_uiHandler(func), m_counter(0), m_tick(0)
+DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^ func) :
+	m_numberOfDevices(nDevices),
+	m_collector(collector),
+	m_uiHandler(func),
+	m_counter(0),
+	m_tick(0),
+	m_packetCounter(0),
+	m_discontinuityCounter(0),
+	m_minAudioThreshold(MIN_AUDIO_THRESHOLD),
+	m_maxAudioThreshold(MAX_AUDIO_THRESHOLD),
+	m_delayWindow(DELAY_WINDOW_SIZE),
+	m_bufferSize(BUFFER_SIZE),
+	m_tdeWindow(TDE_WINDOW),
+	m_storeSample(STORE_SAMPLE)
 {
 	m_devices = std::vector<DeviceInfo>(m_numberOfDevices);
-	m_audioDataFirst = std::vector<AudioItem*>(m_numberOfDevices, NULL);
-	m_audioDataLast = std::vector<AudioItem*>(m_numberOfDevices, NULL);
+	m_audioDataFirst = std::vector<AudioDataPacket*>(m_numberOfDevices, NULL);
+	m_audioDataLast = std::vector<AudioDataPacket*>(m_numberOfDevices, NULL);
 
 	m_buffer = std::vector<std::vector<std::vector<TimeDelayEstimation::AudioDataItem>>>(m_numberOfDevices);
 }
@@ -57,13 +69,14 @@ void DataConsumer::Worker()
 	auto workItemDelegate = [this](Windows::Foundation::IAsyncAction^ action) 
 	{ 
 		while (1) {
-			std::vector<size_t> packetCounts = std::vector<size_t>(m_numberOfDevices, 0);
 			for (size_t i = 0; i < m_numberOfDevices; i++)
 			{
-				AudioItem *first, *last;
+				AudioDataPacket *first, *last;
 				size_t count;
+
 				m_devices[i] = m_collector->RemoveData(i, &first, &last, &count);
-				packetCounts[i] = count;
+				m_packetCounter += count;
+
 				if (m_audioDataLast[i] != NULL)
 				{
 					m_audioDataLast[i]->SetNext(first);
@@ -75,23 +88,17 @@ void DataConsumer::Worker()
 					m_audioDataLast[i] = last;
 				}
 			}
-			int res = HandlePackets();
-
-			switch (res)
+			switch (HandlePackets())
 			{
-			case 3: FlushBuffer(); break;
-			case 4: ProcessData(); break;
+			case Status::DISCONTINUITY: 
+				FlushBuffer(); 
+				m_discontinuityCounter++;
+				break;
+			case Status::DATA_AVAILABLE: ProcessData(); break;
 			}
+			HeartBeat(-3, 5000, m_packetCounter, m_discontinuityCounter);
 
-			ULONGLONG tick = GetTickCount64();
-			if (tick - m_tick > 5000)
-			{
-				m_uiHandler(m_counter++, -3, res, packetCounts[0], packetCounts[1], 0, 0, 0, 44100);
-				m_tick = tick;
-			}
-
-			auto status = action->Status;
-			if (status == Windows::Foundation::AsyncStatus::Canceled) break;
+			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
 		}
 	};
 
@@ -112,12 +119,12 @@ void DataConsumer::Worker()
 	WorkItem->Completed = completionHandler;
 }
 
-int DataConsumer::HandlePackets()
+DataConsumer::Status DataConsumer::HandlePackets()
 {
 	for (size_t i = 0; i < m_numberOfDevices; i++)
 	{
 		// Only one data item
-		if (m_audioDataFirst[i] == m_audioDataLast[i]) return 1;
+		if (m_audioDataFirst[i] == m_audioDataLast[i]) return Status::ONLY_ONE_SAMPLE;
 	}
 	UINT64* pos1 = new UINT64[m_numberOfDevices];
 	UINT64* pos2 = new UINT64[m_numberOfDevices];
@@ -138,37 +145,37 @@ int DataConsumer::HandlePackets()
 		// Remove data before latest starting point
 		if (pos2[i] < maxPos1)
 		{
-			AudioItem* item = m_audioDataFirst[i];
-			m_audioDataFirst[i] = item->Next();
-			delete item;
+			AudioDataPacket* packet = m_audioDataFirst[i];
+			m_audioDataFirst[i] = packet->Next();
+			delete packet;
 			removedData = true;
 		}
 	}
 	delete pos1;
 	delete pos2;
-	if (removedData) return 2;
+	if (removedData) return Status::DATA_REMOVED;
 
 	for (size_t i = 0; i < m_numberOfDevices; i++)
 	{
 		// Remove data before discontinuity
-		if (m_audioDataFirst[i]->Next()->Discontinuity())
+		if (m_audioDataFirst[i]->Discontinuity() || m_audioDataFirst[i]->Next()->Discontinuity())
 		{
-			AudioItem* item = m_audioDataFirst[i];
-			m_audioDataFirst[i] = item->Next();
-			delete item;
+			AudioDataPacket* packet = m_audioDataFirst[i];
+			m_audioDataFirst[i] = packet->Next();
+			delete packet;
 			removedData = true;
 		}
 	}
-	if (removedData) return 3;
+	if (removedData) return Status::DISCONTINUITY;
 
 	for (size_t i = 0; i < m_numberOfDevices; i++)
 	{
-		AudioItem* item = m_audioDataFirst[i];
-		m_audioDataFirst[i] = item->Next();
-		AddData(i, item->Bytes(), item->Data(), item->Position(), item->Next()->Position());
-		delete item;
+		AudioDataPacket* packet = m_audioDataFirst[i];
+		m_audioDataFirst[i] = packet->Next();
+		AddData(i, packet->Bytes(), packet->Data(), packet->Position(), packet->Next()->Position());
+		delete packet;
 	}
-	return 4;
+	return Status::DATA_AVAILABLE;
 }
 
 void DataConsumer::ProcessData()
@@ -182,7 +189,7 @@ void DataConsumer::ProcessData()
 		}
 	}
 
-	if (smallestBuffer > BUFFER_SIZE)
+	if (smallestBuffer > m_bufferSize)
 	{
 		m_collector->StoreData(false);
 		UINT64 latestBegin = m_buffer[0][0][0].timestamp;
@@ -193,56 +200,49 @@ void DataConsumer::ProcessData()
 		}
 
 		bool sample = false;
-		size_t pos = 0, posS = 0;
-		INT16 threshold = MIN_AUDIO_THRESHOLD;
+		size_t pos = 0, sample_pos = 0;
+		uint32 threshold = m_minAudioThreshold;
 
 		while (1) 
 		{ 
-			if (m_buffer[0][0][pos].timestamp < latestBegin) pos++; 
-			else break;	
+			if (m_buffer[0][0][pos].timestamp < latestBegin) pos++; else break;	
 			if (pos == m_buffer[0][0].size()) break;
 		}
 
 		while (pos < m_buffer[0][0].size())
 		{
-			if (abs(m_buffer[0][0][pos].value) > threshold)
+			if (abs(m_buffer[0][0][pos].value) > (int)threshold)
 			{
-				posS = pos;
+				sample_pos = pos;
 				sample = true;
-				if (threshold == MAX_AUDIO_THRESHOLD) break;
+				if (threshold >= m_maxAudioThreshold) break;
 				threshold *= 2;	
 			}
 			pos++;
 		}
-		if (sample) 
-		{ 
-			m_tick = GetTickCount64();
-			long align = CalculateTDE(posS);
-			/*
-			if (align != -99999)
-			{
-				Platform::String^ s1 = "SAMPLE.TXT";
-				Platform::String^ s2 = "";
-
-				for (size_t i = posS; i < posS + TDE_WINDOW; i++)
-				{
-					Platform::String^ s = align.ToString() + " " + m_buffer[0][0][i].timestamp.ToString() + " " + m_buffer[0][0][i].value.ToString() + " " + m_buffer[1][0][align+i].timestamp.ToString() + " " + m_buffer[1][0][align+i].value.ToString() + "\r\n";
-					s2 = Platform::String::Concat(s2, s);				
-				}
-				StoreData(s1, s2);
-			}
-			*/
-		}
-		else
+		if (sample)
 		{
-			ULONGLONG tick = GetTickCount64();
-			if (tick - m_tick > 1000)
+			long align;
+			if (CalculateTDE(sample_pos, &align))
 			{
-				m_uiHandler(m_counter++, -2, 0, 0, 0, 0, 0, 0, m_devices[0].GetSamplesPerSec());
-				m_tick = tick;
+				if (m_storeSample)
+				{
+					Platform::String^ s1 = SAMPLE_FILE;
+					Platform::String^ s2 = "";
+					for (size_t i = sample_pos; i < sample_pos + m_tdeWindow; i++)
+					{
+						Platform::String^ s = align.ToString() + " " + m_buffer[0][0][i].timestamp.ToString() + " " + m_buffer[0][0][i].value.ToString() + " " +
+							m_buffer[1][0][align + i].timestamp.ToString() + " " + m_buffer[1][0][align + i].value.ToString() + "\r\n";
+						s2 = Platform::String::Concat(s2, s);
+						if (i == m_buffer[0][0].size() - 1 || i == m_buffer[1][0].size() - 1) break;
+					}
+					StoreData(s1, s2);
+				}
 			}
+			else HeartBeat(-1, 0, 0, 0);
 		}
-
+		else HeartBeat(-2, 1000, 0, 0);
+			
 		FlushBuffer();
 		FlushCollector();		
 		m_collector->StoreData(true);
@@ -255,7 +255,7 @@ void DataConsumer::FlushPackets()
 	{
 		while (m_audioDataFirst[i] != NULL) 
 		{ 
-			AudioItem* ptr = m_audioDataFirst[i];
+			AudioDataPacket* ptr = m_audioDataFirst[i];
 			m_audioDataFirst[i] = ptr->Next();
 			delete ptr; 
 		}
@@ -281,12 +281,12 @@ void DataConsumer::FlushCollector()
 {
 	for (size_t i = 0; i < m_numberOfDevices; i++)
 	{
-		AudioItem *first, *last;
+		AudioDataPacket *first, *last;
 		size_t count;
 		m_devices[i] = m_collector->RemoveData(i, &first, &last, &count);
 		while (first != NULL) 
 		{	
-			AudioItem* ptr = first;	
+			AudioDataPacket* ptr = first;
 			first = ptr->Next(); 
 			delete ptr; 
 		}
@@ -318,80 +318,53 @@ void DataConsumer::AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT
 	}
 }
 
-long DataConsumer::CalculateTDE(size_t pos)
+bool DataConsumer::CalculateTDE(size_t pos, TimeDelayEstimation::DelayType* alignment)
 {
-	TimeDelayEstimation::SignalData data = TimeDelayEstimation::SignalData(&m_buffer[0][0], &m_buffer[1][0], pos, pos + TDE_WINDOW, false);
-	if (!data.Align((long)pos))
+	TimeDelayEstimation::SignalData data = TimeDelayEstimation::SignalData(&m_buffer[0][0], &m_buffer[1][0], pos, pos + m_tdeWindow, false);
+	TimeDelayEstimation::DelayType align0, align1;
+
+	if (!data.CalculateAlignment(pos, &align0, NULL)) return false;
+	if (!data.CalculateAlignment(pos + m_tdeWindow, &align1, NULL)) return false;
+	data.SetAlignment((align0 + align1) / 2);
+
+	TimeDelayEstimation::DelayType align = data.Alignment();
+
+	UINT64 volume0 = 0, volume1 = 0;
+
+	for (size_t i = pos; i < pos + m_tdeWindow; i++)
 	{
-		m_uiHandler(m_counter++, -1, -999, -999, -999, 0, 0, 0, m_devices[0].GetSamplesPerSec());
-		return -99999;
-	}
-	if (!data.Align((long)pos + TDE_WINDOW))
-	{
-		m_uiHandler(m_counter++, -1, 999, 999, 999, 0, 0, 0, m_devices[0].GetSamplesPerSec());
-		return -99999;
+		volume0 += abs(data.Channel0(i));
+		volume1 += abs(data.Channel1(i + align));
 	}
 
-	long align = data.Alignment();
+	TimeDelayEstimation::TDE tde(m_delayWindow);
 
-	TimeDelayEstimation::SignalValue volume0 = TimeDelayEstimation::SignalZero;
-	TimeDelayEstimation::SignalValue volume1 = TimeDelayEstimation::SignalZero;
-
-	for (size_t i = pos; i < pos + TDE_WINDOW; i++)
-	{
-		TimeDelayEstimation::SignalValue vol = data.Channel0(i);
-		volume0 += abs(vol)/10;
-
-		vol = data.Channel1(i+align);
-		volume1 += abs(vol) / 10;
-	}
-
-	TimeDelayEstimation::TDE tde(DELAY_WINDOW_SIZE);
-	TimeDelayEstimation::TDEVector* v = tde.CC(data);
-	TimeDelayEstimation::CalcType value = v->at(DELAY_WINDOW_SIZE).value;
-	int delay1 = v->at(DELAY_WINDOW_SIZE).delay;
-
-	for (int i = DELAY_WINDOW_BEGIN; i < DELAY_WINDOW_END; i++) {
-		if (v->at(i).value > value) {
-			value = v->at(i).value;
-			delay1 = v->at(i).delay;
-		}
-	}
-	delete v;	
-
-	v = tde.ASDF(data);
-	value = v->at(DELAY_WINDOW_SIZE).value;
-	int delay2 = v->at(DELAY_WINDOW_SIZE).delay;
-
-	for (int i = DELAY_WINDOW_BEGIN; i < DELAY_WINDOW_END; i++) {
-		if (v->at(i).value < value) {
-			value = v->at(i).value;
-			delay2 = v->at(i).delay;
-		}
-	}
-	delete v;
-
-	v = tde.PHAT(data);
-	value = v->at(DELAY_WINDOW_SIZE).value;
-	int delay3 = v->at(DELAY_WINDOW_SIZE).delay;
-
-	for (int i = DELAY_WINDOW_BEGIN; i < DELAY_WINDOW_END; i++) {
-		if (v->at(i).value > value) {
-			value = v->at(i).value;
-			delay3 = v->at(i).delay;
-		}
-	}
-	delete v;
+	int delay1 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::CC);
+	int delay2 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::ASDF);
+	int delay3 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::PHAT);
 
 	m_uiHandler(m_counter++, 0, delay1, delay2, delay3, (int)data.Alignment(), (int)volume0, (int)volume1, m_devices[0].GetSamplesPerSec());
-	return data.Alignment();
+	return true;
 }
 
 void DataConsumer::StoreData(String^ fileName, String^ data) 
 {
 	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
 	auto createFileTask = create_task(localFolder->CreateFileAsync(fileName, Windows::Storage::CreationCollisionOption::GenerateUniqueName));
-	createFileTask.then([data](StorageFile^ newFile) {
+	createFileTask.then([data](StorageFile^ newFile) 
+	{
 		create_task(FileIO::AppendTextAsync(newFile, data));
 	});	
+}
+
+void DataConsumer::HeartBeat(int status, int delta, int msg0, int msg1)
+{
+	ULONGLONG tick = GetTickCount64();
+	if (tick - m_tick > delta)
+	{
+		m_uiHandler(m_counter++, status, msg0, msg1, 0, 0, 0, 0, 44100);
+		m_tick = tick;
+		m_packetCounter = 0;
+		m_discontinuityCounter = 0;
+	}
 }

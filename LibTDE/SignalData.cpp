@@ -3,10 +3,10 @@
 
 using namespace TimeDelayEstimation;
 
-SignalData::SignalData(std::vector<SignalType>* channel0, std::vector<SignalType>* channel1, bool copy)
-	: m_copy(copy), m_min(0), m_max(min(channel0->size(),channel1->size())), m_alignment(0)
+SignalData::SignalData(std::vector<SignalType>* channel0, std::vector<SignalType>* channel1, bool copyData)
+	: m_copy(copyData), m_min(0), m_max(min(channel0->size(),channel1->size())), m_alignment(0)
 {
-	if (copy)
+	if (copyData)
 	{
 		m_channel0 = new std::vector<SignalType>(*channel0);
 		m_channel1 = new std::vector<SignalType>(*channel1);
@@ -18,10 +18,10 @@ SignalData::SignalData(std::vector<SignalType>* channel0, std::vector<SignalType
 	}
 }
 
-SignalData::SignalData(std::vector<SignalType>* channel0, std::vector<SignalType>* channel1, std::size_t minPos, std::size_t maxPos, bool copy)
-	: m_copy(copy), m_min(minPos), m_max(maxPos), m_alignment(0)
+SignalData::SignalData(std::vector<SignalType>* channel0, std::vector<SignalType>* channel1, std::size_t minPos, std::size_t maxPos, bool copyData)
+	: m_copy(copyData), m_min(minPos), m_max(maxPos), m_alignment(0)
 {
-	if (copy)
+	if (copyData)
 	{
 		m_channel0 = new std::vector<SignalType>(*channel0);
 		m_channel1 = new std::vector<SignalType>(*channel1);
@@ -35,55 +35,54 @@ SignalData::SignalData(std::vector<SignalType>* channel0, std::vector<SignalType
 	if (maxPos >= channel0->size() || maxPos >= channel1->size()) m_max = min(channel0->size() - 1, channel1->size() - 1);
 }
 
-SignalData::~SignalData() {
+SignalData::~SignalData() 
+{
 	if (m_copy) {
 		delete m_channel0;
 		delete m_channel1;
 	}
 }
 
-SignalValue SignalData::Channel0(size_t position) const {
+SignalValue SignalData::Channel0(size_t position) const 
+{
 	if (position < 0 || position >= m_channel0->size()) return SignalZero;
 	return m_channel0->at(position).value;
 }
 
-SignalValue SignalData::Channel1(size_t position) const {
+SignalValue SignalData::Channel1(size_t position) const 
+{
 	if (position < 0 || position >= m_channel1->size()) return SignalZero;
 	return m_channel1->at(position).value;
 }
 
-SignalValue SignalData::Channel1(size_t position, DelayType delay) const {
+SignalValue SignalData::Channel1(size_t position, DelayType delay) const 
+{
 	return Channel1(position + delay + m_alignment);
 }
 
-bool SignalData::Align(long position) {
+bool SignalData::CalculateAlignment(size_t position, DelayType* alignment, UINT64* delta)
+{
 	long p = position;
-	
+
 	if (position >= m_channel0->size()) return false;
 	if (position >= m_channel1->size()) return false;
 
 	if (m_channel0->at(position).timestamp > m_channel1->at(position).timestamp)
 	{
-		while (m_channel1->at(p).timestamp < m_channel0->at(position).timestamp) {
-			p++;
-			if (p >= m_channel1->size()) return false;
-		}
-		if (p > 0 && m_channel0->at(position).timestamp - m_channel1->at(p-1).timestamp > m_channel1->at(p).timestamp - m_channel0->at(position).timestamp)
-		{
-			p--;
-		}
+		while (m_channel1->at(p).timestamp < m_channel0->at(position).timestamp) { if (++p >= m_channel1->size()) return false;	}
+		if (p > 0 && m_channel0->at(position).timestamp - m_channel1->at(p - 1).timestamp > m_channel1->at(p).timestamp - m_channel0->at(position).timestamp) { p--; }
 	}
 	else if (m_channel0->at(position).timestamp < m_channel1->at(position).timestamp)
 	{
-		while (m_channel1->at(p).timestamp > m_channel0->at(position).timestamp) {
-			p--;
-			if (p < 0) return false;
-		}
-		if (p < m_channel1->size()-1 && m_channel0->at(position).timestamp - m_channel1->at(p).timestamp > m_channel1->at(p + 1).timestamp - m_channel0->at(position).timestamp)
-		{
-			p++;
-		}
+		while (m_channel1->at(p).timestamp > m_channel0->at(position).timestamp) { if (--p < 0) return false; }
+		if (p < m_channel1->size() - 1 && m_channel0->at(position).timestamp - m_channel1->at(p).timestamp > m_channel1->at(p + 1).timestamp - m_channel0->at(position).timestamp) { p++; }
 	}
-	m_alignment = p - position;
+	if (alignment != NULL) *alignment = p - position;
+	if (delta != NULL) *delta = m_channel1->at(p).timestamp - m_channel0->at(position).timestamp;
 	return true;
+}
+
+bool SignalData::Align(size_t position)
+{
+	return CalculateAlignment(position, &m_alignment, NULL);
 }

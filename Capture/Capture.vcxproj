@@ -170,7 +170,7 @@
     <ClInclude Include="DataConsumer.h" />
     <ClInclude Include="DeviceInfo.h" />
     <ClInclude Include="DeviceState.h" />
-    <ClInclude Include="AudioItem.h" />
+    <ClInclude Include="AudioDataPacket.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h">
       <DependentUpon>App.xaml</DependentUpon>

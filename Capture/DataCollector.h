@@ -4,7 +4,7 @@
 #include <wrl\implements.h>
 #include <mfapi.h>
 #include "DeviceInfo.h"
-#include "AudioItem.h"
+#include "AudioDataPacket.h"
 
 namespace Wasapi
 {
@@ -18,7 +18,7 @@ namespace Wasapi
 		HRESULT Finish();
 
 		void AddData(size_t device, BYTE* pData, DWORD cbBytes, UINT64 u64QPCPosition, bool bDiscontinuity);
-		DeviceInfo RemoveData(size_t device, AudioItem** first, AudioItem** last, size_t *count);
+		DeviceInfo RemoveData(size_t device, AudioDataPacket** first, AudioDataPacket** last, size_t *count);
 		void StoreData(bool store);
 
 	private:
@@ -30,8 +30,8 @@ namespace Wasapi
 		size_t m_numberOfDevices;
 		bool m_store;
 
-		std::vector<AudioItem*> m_audioDataFirst;
-		std::vector<AudioItem*> m_audioDataLast;
+		std::vector<AudioDataPacket*> m_audioDataFirst;
+		std::vector<AudioDataPacket*> m_audioDataLast;
 		std::vector<DeviceInfo> m_devices;
 		std::vector<size_t> m_packetCounts;
 	};

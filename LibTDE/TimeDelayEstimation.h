@@ -10,11 +10,18 @@ namespace TimeDelayEstimation {
 	typedef std::complex<double> cpx_type;
 
 	struct DataPoint {
-		int delay;
+		DelayType delay;
 		CalcType value;
 	};
 
 	typedef std::vector<DataPoint> TDEVector;
+
+	enum class Algoritm
+	{
+		CC,
+		ASDF,
+		PHAT
+	};
 
 	struct CalculationStep {
 		bool done;
@@ -35,8 +42,10 @@ namespace TimeDelayEstimation {
 	class TDE
 	{
 	public:
-		TDE(int aMaxDelay) : iMaxDelay(aMaxDelay) {}
+		TDE(size_t aMaxDelay);
 		~TDE() {}
+
+		DelayType FindDelay(const SignalData& aData, Algoritm a);
 
 		TDEVector* CC(const SignalData& aData) { return CrossCorrelation(aData); }
 		TDEVector* PHAT(const SignalData& aData) { return PhaseTransform(aData); }
@@ -58,7 +67,9 @@ namespace TimeDelayEstimation {
 
 	private:
 
-		int iMaxDelay;
+		DelayType m_maxDelay;
+		DelayType m_windowStart;
+		DelayType m_windowEnd;
 
 	};
 }

@@ -14,7 +14,7 @@ namespace Wasapi
 {
 	static Windows::Foundation::IAsyncAction^ WorkItem = nullptr;
 
-	public delegate void UIHandler(int, int, int, int, int, int, int, int, int);
+	public delegate void UIHandler(int, int, int, int, int, int, UINT64, UINT64, int);
 
 	ref class DataConsumer sealed
 	{
@@ -28,10 +28,22 @@ namespace Wasapi
 		HRESULT Finish();
 
 	private:
+
+		enum class Status
+		{
+			ONLY_ONE_SAMPLE,
+			DATA_REMOVED,
+			DISCONTINUITY,
+			DATA_AVAILABLE
+		};
+
+
+	private:
 		~DataConsumer();
 
-		int HandlePackets();
+		void HeartBeat(int status, int delta, int msg0, int msg1);
 
+		Status HandlePackets();
 		void ProcessData();
 
 		void FlushPackets();
@@ -39,9 +51,7 @@ namespace Wasapi
 		void FlushCollector();
 
 		void AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT64 pos1, UINT64 pos2);
-
-		long CalculateTDE(size_t pos);
-
+		bool CalculateTDE(size_t pos, TimeDelayEstimation::DelayType* alignment);
 		void StoreData(String^ fileName, String^ data);
 
 		void Worker();
@@ -50,14 +60,24 @@ namespace Wasapi
 		DataCollector^ m_collector;
 
 		std::vector<DeviceInfo> m_devices;
-		std::vector<AudioItem*> m_audioDataFirst;
-		std::vector<AudioItem*> m_audioDataLast;
+		std::vector<AudioDataPacket*> m_audioDataFirst;
+		std::vector<AudioDataPacket*> m_audioDataLast;
 
 		std::vector<std::vector<std::vector<TimeDelayEstimation::AudioDataItem>>> m_buffer;	
 
 		UIHandler^ m_uiHandler;
-		int m_counter;
 
+		uint32 m_counter;
 		ULONGLONG m_tick;
+
+		uint32 m_minAudioThreshold;
+		uint32 m_maxAudioThreshold;
+		uint32 m_packetCounter;
+		uint32 m_discontinuityCounter;
+
+		size_t m_delayWindow;
+		size_t m_bufferSize;
+		size_t m_tdeWindow;
+		bool m_storeSample;
 	};
 }

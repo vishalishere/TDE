@@ -63,13 +63,13 @@
     <ClInclude Include="DeviceInfo.h">
       <Filter>Engine\Buffering</Filter>
     </ClInclude>
-    <ClInclude Include="AudioItem.h">
-      <Filter>Engine\Buffering</Filter>
-    </ClInclude>
     <ClInclude Include="DataCollector.h">
       <Filter>Engine\Buffering</Filter>
     </ClInclude>
     <ClInclude Include="DataConsumer.h">
+      <Filter>Engine\Buffering</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioDataPacket.h">
       <Filter>Engine\Buffering</Filter>
     </ClInclude>
   </ItemGroup>

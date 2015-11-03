@@ -25,7 +25,6 @@ using namespace Windows::UI::Xaml::Navigation;
 using namespace Windows::ApplicationModel;
 using namespace Windows::ApplicationModel::Activation;
 
-
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
 MainPage::MainPage()
@@ -56,7 +55,7 @@ void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int 
 
 void SoundCapture::MainPage::Start()
 {
-	Wasapi::UIHandler^ uiHandler = ref new Wasapi::UIHandler([this](int i0, int i1, int i2, int i3, int i4, int i5, int i6, int i7, int i8)
+	Wasapi::UIHandler^ uiHandler = ref new Wasapi::UIHandler([this](int i0, int i1, int i2, int i3, int i4, int i5, UINT64 i6, UINT64 i7, int i8)
 	{
 		auto uiDelegate = [this, i0, i1, i2, i3, i4, i5, i6, i7, i8]()
 		{
@@ -69,7 +68,7 @@ void SoundCapture::MainPage::Start()
 			text7->Text = i6.ToString();
 			text8->Text = i7.ToString();
 
-			int vol = i6/20;
+			int vol = i6/200;
 			if (vol > 800) vol = 800;
 
 			if (vol > 20)

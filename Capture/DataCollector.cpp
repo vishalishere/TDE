@@ -13,8 +13,8 @@ DataCollector::DataCollector(size_t nDevices) : m_numberOfDevices(nDevices), m_s
 		ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
 	}
 	m_devices = std::vector<DeviceInfo>(m_numberOfDevices);
-	m_audioDataFirst = std::vector<AudioItem*>(m_numberOfDevices, NULL);
-	m_audioDataLast = std::vector<AudioItem*>(m_numberOfDevices, NULL);
+	m_audioDataFirst = std::vector<AudioDataPacket*>(m_numberOfDevices, NULL);
+	m_audioDataLast = std::vector<AudioDataPacket*>(m_numberOfDevices, NULL);
 	m_packetCounts = std::vector<size_t>(m_numberOfDevices, 0);
 }
 
@@ -40,7 +40,7 @@ void DataCollector::AddData(size_t device, BYTE* pData, DWORD cbBytes,  UINT64 u
 	if (m_store)
 	{
 		m_packetCounts[device] = m_packetCounts[device] + 1;
-		AudioItem* item = new AudioItem(pData, cbBytes, u64QPCPosition, bDiscontinuity);
+		AudioDataPacket* item = new AudioDataPacket(pData, cbBytes, u64QPCPosition, bDiscontinuity);
 		if (m_audioDataFirst[device] == NULL)
 		{
 			m_audioDataFirst[device] = item;
@@ -57,7 +57,7 @@ void DataCollector::AddData(size_t device, BYTE* pData, DWORD cbBytes,  UINT64 u
 	LeaveCriticalSection(&m_CritSec);
 }
 
-DeviceInfo DataCollector::RemoveData(size_t device, AudioItem** first, AudioItem** last, size_t *count)
+DeviceInfo DataCollector::RemoveData(size_t device, AudioDataPacket** first, AudioDataPacket** last, size_t *count)
 {
 	EnterCriticalSection(&m_CritSec);
 	*first = m_audioDataFirst[device];
@@ -92,7 +92,7 @@ void DataCollector::FlushPackets()
 	{
 		while (m_audioDataFirst[i] != NULL)
 		{
-			AudioItem* ptr = m_audioDataFirst[i];
+			AudioDataPacket* ptr = m_audioDataFirst[i];
 			m_audioDataFirst[i] = ptr->Next();
 			delete ptr;
 		}
