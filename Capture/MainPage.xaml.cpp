@@ -27,7 +27,7 @@ using namespace Windows::ApplicationModel::Activation;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
-MainPage::MainPage()
+MainPage::MainPage() : m_sampleCount(0)
 {
 	InitializeComponent();
 
@@ -60,7 +60,13 @@ void SoundCapture::MainPage::Start()
 		auto uiDelegate = [this, i0, i1, i2, i3, i4, i5, i6, i7, i8]()
 		{
 			text1->Text = i0.ToString();
-			text2->Text = i1.ToString();
+			switch (i1)
+			{
+			case 0: text2->Text = "DATA"; break;
+			case -1: text2->Text = "INVALID"; break;
+			case -2: text2->Text = "SILENCE"; break;
+			case -3: text2->Text = "BUFFERING"; break;
+			}
 			text3->Text = i2.ToString();
 			text4->Text = i3.ToString();
 			text5->Text = i4.ToString();
@@ -68,16 +74,27 @@ void SoundCapture::MainPage::Start()
 			text7->Text = i6.ToString();
 			text8->Text = i7.ToString();
 
-			UINT64 vol = i6/200;
+			UINT64 vol = i6/100;
 			if (vol > 800) vol = 800;
 
-			if (vol > 20)
+			if (i1 == 0)
 			{
-				Direction(i8, 0.35, -1 * i2, 600, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
-				Direction(i8, 0.35, -1 * i3, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Blue));
-				Direction(i8, 0.35, -1 * i4, 1000, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Green));
+				if (canvas->Children->Size > 10)
+				{
+					canvas->Children->RemoveAt(0);
+				}
 			}
-			text9->Text = (canvas->Children->Size / 3).ToString();
+			else if (i1 != -3 && canvas->Children->Size > 0)
+			{
+				canvas->Children->RemoveAt(0);
+			}
+
+			if (i1 == 0 && vol > 20 && (i3 > i2 - 5 && i3 < i2 + 5))
+			{
+				Direction(i8, 0.3, -1 * (i2+i3)/2, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
+				m_sampleCount++;
+				text9->Text = m_sampleCount.ToString();
+			}	
 		};
 		auto handler = ref new Windows::UI::Core::DispatchedHandler(uiDelegate);
 		Dispatcher->RunAsync(Windows::UI::Core::CoreDispatcherPriority::Normal, handler);

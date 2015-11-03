@@ -21,8 +21,8 @@
             <ColumnDefinition Width="100"/>
             <ColumnDefinition Width="100"/>
             <ColumnDefinition Width="100"/>
-            <ColumnDefinition Width="100"/>
-            <ColumnDefinition Width="100"/>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="200"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <TextBlock Grid.Row="0" Grid.Column="1" Text = "INDEX"  FontSize="16"/>

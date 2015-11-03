@@ -11,11 +11,12 @@ using namespace Wasapi;
 
 using namespace concurrency;
 
-#define MIN_AUDIO_THRESHOLD 200
+#define MIN_AUDIO_THRESHOLD 400
 #define MAX_AUDIO_THRESHOLD	6400
-#define BUFFER_SIZE 5000
+#define BUFFER_SIZE 44100
 #define DELAY_WINDOW_SIZE 50
 #define TDE_WINDOW 200
+#define START_OFFSET -10
 #define STORE_SAMPLE 0
 #define SAMPLE_FILE "SAMPLE.TXT"
 
@@ -109,7 +110,7 @@ void DataConsumer::Worker()
 					break;
 				}
 			}
-			HeartBeat(-3, 5000, m_packetCounter, m_discontinuityCounter, m_dataRemovalCounter);
+			HeartBeat(-3, 5000, m_packetCounter, m_discontinuityCounter, m_dataRemovalCounter, 0, m_devices[0].GetPosition(), m_devices[1].GetPosition());
 
 			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
 		}
@@ -236,7 +237,7 @@ bool DataConsumer::ProcessData()
 		if (sample)
 		{
 			long align;
-			if (CalculateTDE(sample_pos, &align))
+			if (CalculateTDE(sample_pos + START_OFFSET, &align))
 			{
 				if (m_storeSample)
 				{
@@ -252,9 +253,9 @@ bool DataConsumer::ProcessData()
 					StoreData(s1, s2);
 				}
 			}
-			else HeartBeat(-1, 0, 0, 0, 0);
+			else HeartBeat(-1, 0, 0, 0, 0, 0, 0, 0);
 		}
-		else HeartBeat(-2, 1000, 0, 0, 0);
+		else HeartBeat(-2, 1000, 0, 0, 0, 0, 0, 0);
 			
 		FlushBuffer();
 		FlushCollector();		
@@ -356,9 +357,9 @@ bool DataConsumer::CalculateTDE(size_t pos, TimeDelayEstimation::DelayType* alig
 
 	int delay1 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::CC);
 	int delay2 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::ASDF);
-	int delay3 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::PHAT);
+	//int delay3 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::PHAT);
 
-	m_uiHandler(m_counter++, 0, delay1, delay2, delay3, (int)data.Alignment(), (int)volume0, (int)volume1, m_devices[0].GetSamplesPerSec());
+	m_uiHandler(m_counter++, 0, delay1, delay2, 0, (int)data.Alignment(), volume0, volume1, m_devices[0].GetSamplesPerSec());
 	return true;
 }
 
@@ -372,12 +373,12 @@ void DataConsumer::StoreData(String^ fileName, String^ data)
 	});	
 }
 
-void DataConsumer::HeartBeat(int status, int delta, int msg0, int msg1, int msg2)
+void DataConsumer::HeartBeat(int status, int delta, int msg0, int msg1, int msg2, int msg3, UINT64 msg4, UINT64 msg5)
 {
 	ULONGLONG tick = GetTickCount64();
 	if (tick - m_tick > delta)
 	{
-		m_uiHandler(m_counter++, status, msg0, msg1, msg2, 0, 0, 0, 44100);
+		m_uiHandler(m_counter++, status, msg0, msg1, msg2, msg3, msg4, msg5, 44100);
 		m_tick = tick;
 		m_packetCounter = 0;
 		m_discontinuityCounter = 0;

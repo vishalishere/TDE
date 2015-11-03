@@ -37,11 +37,10 @@ namespace Wasapi
 			DATA_AVAILABLE
 		};
 
-
 	private:
 		~DataConsumer();
 
-		void HeartBeat(int status, int delta, int msg0, int msg1, int msg2);
+		void HeartBeat(int status, int delta, int msg0, int msg1, int msg2, int msg3, UINT64 msg4, UINT64 msg5);
 
 		Status HandlePackets();
 		bool ProcessData();

@@ -44,9 +44,10 @@ DelayType TDE::FindDelay(const SignalData& aData, Algoritm a)
 	TDEVector* v;
 	switch (a)
 	{
+	case Algoritm::CC: v = CrossCorrelation(aData); break;
 	case Algoritm::ASDF: v = AverageSquareDifference(aData); break;
 	case Algoritm::PHAT: v = PhaseTransform(aData); break;
-	default: v = CrossCorrelation(aData); break;
+	default: return FindPeak(aData);
 	}
 
 	CalcType value = v->at(m_maxDelay).value;
@@ -62,6 +63,32 @@ DelayType TDE::FindDelay(const SignalData& aData, Algoritm a)
 	}
 	delete v;
 	return delay;
+}
+
+DelayType TDE::FindPeak(const SignalData& aData)
+{
+	CalcType value0Max = CalcZero;
+	CalcType value1Max = CalcZero;
+
+	size_t index0 = 0;
+	size_t index1 = 0;
+
+	for (size_t position = aData.First(); position < aData.Last() + 1; position++)
+	{
+		CalcType val0 = abs(aData.Channel0(position - 1)) + abs(aData.Channel0(position)) + abs(aData.Channel0(position + 1));
+		CalcType val1 = abs(aData.Channel1(position - 1, 0)) + abs(aData.Channel1(position, 0)) + abs(aData.Channel1(position + 1, 0));
+		if (val0 > value0Max)
+		{
+			value0Max = val0;
+			index0 = position;
+		}
+		if (val1 > value1Max)
+		{
+			value1Max = val1;
+			index1 = position;
+		}
+	}
+	return index1 - index0;
 }
 
 TDEVector* TDE::CrossCorrelation(const SignalData& aData) 

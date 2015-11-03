@@ -20,7 +20,8 @@ namespace TimeDelayEstimation {
 	{
 		CC,
 		ASDF,
-		PHAT
+		PHAT,
+		PEAK
 	};
 
 	struct CalculationStep {
@@ -46,6 +47,7 @@ namespace TimeDelayEstimation {
 		~TDE() {}
 
 		DelayType FindDelay(const SignalData& aData, Algoritm a);
+		DelayType FindPeak(const SignalData& aData);
 
 		TDEVector* CC(const SignalData& aData) { return CrossCorrelation(aData); }
 		TDEVector* PHAT(const SignalData& aData) { return PhaseTransform(aData); }
