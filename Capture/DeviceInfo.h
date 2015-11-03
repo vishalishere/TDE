@@ -14,6 +14,9 @@ namespace Wasapi
 		UINT64 GetPosition() { return m_lastuQPCPosition; }
 
 		bool Initialized() const { return m_initialized; }
+		bool DeviceError() const { return !m_working;  }
+
+		void SetError() { m_working = false; }
 
 		void SetConfiguration(size_t channels, int bytesPerSample, int nSamplesPerSec)
 		{ 
@@ -21,11 +24,13 @@ namespace Wasapi
 			m_bytesPerSample = bytesPerSample;
 			m_nSamplesPerSec = nSamplesPerSec;
 			m_initialized = true;
+			m_working = true;
 		}
 
 		void SetPosition(UINT64 lastuQPCPosition) { m_lastuQPCPosition = lastuQPCPosition; }
 
 	private:
+		bool m_working;
 		bool m_initialized;
 		size_t m_channels;
 		int m_bytesPerSample;

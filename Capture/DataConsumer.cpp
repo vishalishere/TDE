@@ -11,8 +11,8 @@ using namespace Wasapi;
 
 using namespace concurrency;
 
-#define MIN_AUDIO_THRESHOLD 400
-#define MAX_AUDIO_THRESHOLD	6400
+#define MIN_AUDIO_THRESHOLD 200
+#define MAX_AUDIO_THRESHOLD	12800
 #define BUFFER_SIZE 44100
 #define DELAY_WINDOW_SIZE 50
 #define TDE_WINDOW 200
@@ -71,12 +71,13 @@ void DataConsumer::Worker()
 	auto workItemDelegate = [this](Windows::Foundation::IAsyncAction^ action) 
 	{ 
 		while (1) {
+			bool error;
 			for (size_t i = 0; i < m_numberOfDevices; i++)
 			{
 				AudioDataPacket *first, *last;
 				size_t count;
-
-				m_devices[i] = m_collector->RemoveData(i, &first, &last, &count);
+			
+				m_devices[i] = m_collector->RemoveData(i, &first, &last, &count, &error);
 				m_packetCounter += count;
 
 				if (m_audioDataLast[i] != NULL)
@@ -90,6 +91,7 @@ void DataConsumer::Worker()
 					m_audioDataLast[i] = last;
 				}
 			}
+			if (error) HeartBeat(-4, 0, 0, 0, 0, 0, 0, 0);
 			bool loop = true;
 			while(loop)
 			{ 
@@ -98,7 +100,8 @@ void DataConsumer::Worker()
 				case Status::ONLY_ONE_SAMPLE:
 					loop = false;
 					break;
-				case Status::DATA_REMOVED:
+				case Status::EXCESS_DATA:
+				case Status::SILENCE:
 					m_dataRemovalCounter++;
 					break;
 				case Status::DISCONTINUITY:
@@ -167,7 +170,7 @@ DataConsumer::Status DataConsumer::HandlePackets()
 	}
 	delete pos1;
 	delete pos2;
-	if (removedData) return Status::DATA_REMOVED;
+	if (removedData) return Status::EXCESS_DATA;
 
 	for (size_t i = 0; i < m_numberOfDevices; i++)
 	{
@@ -181,6 +184,19 @@ DataConsumer::Status DataConsumer::HandlePackets()
 		}
 	}
 	if (removedData) return Status::DISCONTINUITY;
+
+	for (size_t i = 0; i < m_numberOfDevices; i++)
+	{
+		// Remove silent data
+		if (m_audioDataFirst[i]->Silence())
+		{
+			AudioDataPacket* packet = m_audioDataFirst[i];
+			m_audioDataFirst[i] = packet->Next();
+			delete packet;
+			removedData = true;
+		}
+	}
+	if (removedData) return Status::SILENCE;
 
 	for (size_t i = 0; i < m_numberOfDevices; i++)
 	{
@@ -299,7 +315,8 @@ void DataConsumer::FlushCollector()
 	{
 		AudioDataPacket *first, *last;
 		size_t count;
-		m_devices[i] = m_collector->RemoveData(i, &first, &last, &count);
+		bool error;
+		m_devices[i] = m_collector->RemoveData(i, &first, &last, &count, &error);
 		while (first != NULL) 
 		{	
 			AudioDataPacket* ptr = first;

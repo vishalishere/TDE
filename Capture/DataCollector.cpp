@@ -6,7 +6,7 @@ using namespace Windows::System::Threading;
 using namespace Platform;
 using namespace Wasapi;
 
-DataCollector::DataCollector(size_t nDevices) : m_numberOfDevices(nDevices), m_store(true)
+DataCollector::DataCollector(size_t nDevices) : m_numberOfDevices(nDevices), m_store(true), m_error(false)
 {
 	if (!InitializeCriticalSectionEx(&m_CritSec, 0, 0))
 	{
@@ -33,14 +33,21 @@ HRESULT DataCollector::Initialize(size_t device, int channels, int nSamplesPerSe
 	return hr;
 }
 
-void DataCollector::AddData(size_t device, BYTE* pData, DWORD cbBytes,  UINT64 u64QPCPosition, bool bDiscontinuity)
+void  DataCollector::DeviceError(size_t device)
+{
+	EnterCriticalSection(&m_CritSec);
+	m_devices[device].SetError();
+	LeaveCriticalSection(&m_CritSec);
+}
+
+void DataCollector::AddData(size_t device, BYTE* pData, DWORD cbBytes,  UINT64 u64QPCPosition, bool bDiscontinuity, bool bSilence)
 {
 	EnterCriticalSection(&m_CritSec);
 
 	if (m_store)
 	{
 		m_packetCounts[device] = m_packetCounts[device] + 1;
-		AudioDataPacket* item = new AudioDataPacket(pData, cbBytes, u64QPCPosition, bDiscontinuity);
+		AudioDataPacket* item = new AudioDataPacket(pData, cbBytes, u64QPCPosition, bDiscontinuity, bSilence);
 		if (m_audioDataFirst[device] == NULL)
 		{
 			m_audioDataFirst[device] = item;
@@ -57,12 +64,13 @@ void DataCollector::AddData(size_t device, BYTE* pData, DWORD cbBytes,  UINT64 u
 	LeaveCriticalSection(&m_CritSec);
 }
 
-DeviceInfo DataCollector::RemoveData(size_t device, AudioDataPacket** first, AudioDataPacket** last, size_t *count)
+DeviceInfo DataCollector::RemoveData(size_t device, AudioDataPacket** first, AudioDataPacket** last, size_t *count, bool* error)
 {
 	EnterCriticalSection(&m_CritSec);
 	*first = m_audioDataFirst[device];
 	*last = m_audioDataLast[device];
 	*count = m_packetCounts[device];
+	*error = m_error;
 
 	m_audioDataFirst[device] = NULL;
 	m_audioDataLast[device] = NULL;

@@ -437,6 +437,12 @@ HRESULT WASAPICapture::OnAudioSampleRequested(Platform::Boolean IsSilence)
 
     EnterCriticalSection( &m_CritSec );
 
+	if (m_DeviceStateChanged->GetState() == DeviceState::DeviceStateInError)
+	{
+		m_streams->DeviceError(m_CaptureDeviceID);
+		goto exit;
+	}
+
     // If this flag is set, we have already queued up the async call to finialize the WAV header
     // So we don't want to grab or write any more data that would possibly give us an invalid size
     if ( (m_DeviceStateChanged->GetState() == DeviceState::DeviceStateStopping) ||
@@ -488,13 +494,14 @@ HRESULT WASAPICapture::OnAudioSampleRequested(Platform::Boolean IsSilence)
         {
             goto exit;
         }
-
+		/*
         if (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY)
         {
             // Pass down a discontinuity flag in case the app is interested and reset back to capturing
             m_DeviceStateChanged->SetState( DeviceState::DeviceStateDiscontinuity, S_OK, true );
             m_DeviceStateChanged->SetState( DeviceState::DeviceStateCapturing, S_OK, false );
         }
+		*/
 		if (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR)
 		{
 			String^ str = String::Concat(m_DeviceIdString, "-TIMESTAMP_ERROR\n");
@@ -508,7 +515,7 @@ HRESULT WASAPICapture::OnAudioSampleRequested(Platform::Boolean IsSilence)
         }
 
 		// HANDLE AUDIO DATA
-		m_streams->AddData(m_CaptureDeviceID, Data, cbBytesToCapture, u64QPCPosition, dwCaptureFlags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY);
+		m_streams->AddData(m_CaptureDeviceID, Data, cbBytesToCapture, u64QPCPosition, dwCaptureFlags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, dwCaptureFlags & AUDCLNT_BUFFERFLAGS_SILENT);
 
         // Release buffer back
         m_AudioCaptureClient->ReleaseBuffer( FramesAvailable );

@@ -66,6 +66,7 @@ void SoundCapture::MainPage::Start()
 			case -1: text2->Text = "INVALID"; break;
 			case -2: text2->Text = "SILENCE"; break;
 			case -3: text2->Text = "BUFFERING"; break;
+			case -4: text2->Text = "ERROR"; break;
 			}
 			text3->Text = i2.ToString();
 			text4->Text = i3.ToString();

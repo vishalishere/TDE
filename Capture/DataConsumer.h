@@ -32,8 +32,9 @@ namespace Wasapi
 		enum class Status
 		{
 			ONLY_ONE_SAMPLE,
-			DATA_REMOVED,
+			EXCESS_DATA,
 			DISCONTINUITY,
+			SILENCE,
 			DATA_AVAILABLE
 		};
 

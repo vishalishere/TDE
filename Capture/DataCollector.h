@@ -17,8 +17,10 @@ namespace Wasapi
 		HRESULT Initialize(size_t device, int channelsPerDevice, int nSamplesPerSec, int bitsPerSample, WAVEFORMATEX *mixFormat);
 		HRESULT Finish();
 
-		void AddData(size_t device, BYTE* pData, DWORD cbBytes, UINT64 u64QPCPosition, bool bDiscontinuity);
-		DeviceInfo RemoveData(size_t device, AudioDataPacket** first, AudioDataPacket** last, size_t *count);
+		void DeviceError(size_t device);
+
+		void AddData(size_t device, BYTE* pData, DWORD cbBytes, UINT64 u64QPCPosition, bool bDiscontinuity, bool bSilence);
+		DeviceInfo RemoveData(size_t device, AudioDataPacket** first, AudioDataPacket** last, size_t *count, bool* error);
 		void StoreData(bool store);
 
 	private:
@@ -29,6 +31,7 @@ namespace Wasapi
 		CRITICAL_SECTION m_CritSec;
 		size_t m_numberOfDevices;
 		bool m_store;
+		bool m_error;
 
 		std::vector<AudioDataPacket*> m_audioDataFirst;
 		std::vector<AudioDataPacket*> m_audioDataLast;
