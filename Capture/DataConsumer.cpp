@@ -11,13 +11,13 @@ using namespace Wasapi;
 
 using namespace concurrency;
 
-#define MIN_AUDIO_THRESHOLD 200
-#define MAX_AUDIO_THRESHOLD	12800
+#define MIN_AUDIO_THRESHOLD 400
+#define MAX_AUDIO_THRESHOLD	6400
 #define BUFFER_SIZE 44100
 #define DELAY_WINDOW_SIZE 50
 #define TDE_WINDOW 200
 #define START_OFFSET -10
-#define STORE_SAMPLE 0
+#define STORE_SAMPLE 1
 #define SAMPLE_FILE "SAMPLE.TXT"
 
 DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^ func) :
@@ -252,24 +252,10 @@ bool DataConsumer::ProcessData()
 		}
 		if (sample)
 		{
-			long align;
-			if (CalculateTDE(sample_pos + START_OFFSET, &align))
+			if (!CalculateTDE(max(0,sample_pos + START_OFFSET)))
 			{
-				if (m_storeSample)
-				{
-					Platform::String^ s1 = SAMPLE_FILE;
-					Platform::String^ s2 = "";
-					for (size_t i = sample_pos; i < sample_pos + m_tdeWindow; i++)
-					{
-						Platform::String^ s = align.ToString() + " " + m_buffer[0][0][i].timestamp.ToString() + " " + m_buffer[0][0][i].value.ToString() + " " +
-							m_buffer[1][0][align + i].timestamp.ToString() + " " + m_buffer[1][0][align + i].value.ToString() + "\r\n";
-						s2 = Platform::String::Concat(s2, s);
-						if (i == m_buffer[0][0].size() - 1 || i == m_buffer[1][0].size() - 1) break;
-					}
-					StoreData(s1, s2);
-				}
+				HeartBeat(-1, 0, 0, 0, 0, 0, 0, 0);
 			}
-			else HeartBeat(-1, 0, 0, 0, 0, 0, 0, 0);
 		}
 		else HeartBeat(-2, 1000, 0, 0, 0, 0, 0, 0);
 			
@@ -330,7 +316,8 @@ void DataConsumer::AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT
 {
 	DWORD numPoints = cbBytes / (DWORD)(m_devices[device].GetChannels() * m_devices[device].GetBytesPerSample());
 	INT16 *pi16 = (INT16*)pData;
-	UINT64 delta = (pos2 - pos1) / numPoints;
+	UINT64 delta = pos2 - pos1;
+	double d = (double)delta / numPoints;
 
 	if (m_buffer[device].size() == 0)
 	{
@@ -341,7 +328,7 @@ void DataConsumer::AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT
 	}
 	for (DWORD i = 0; i < numPoints; i++)
 	{
-		UINT64 time_delta = i * delta;
+		UINT64 time_delta = UINT64((double)i * d);
 		for (size_t j = 0; j < m_devices[device].GetChannels(); j++)
 		{
 			TimeDelayEstimation::AudioDataItem item = { *pi16, pos1 + time_delta, i };
@@ -351,15 +338,15 @@ void DataConsumer::AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT
 	}
 }
 
-bool DataConsumer::CalculateTDE(size_t pos, TimeDelayEstimation::DelayType* alignment)
+bool DataConsumer::CalculateTDE(size_t pos)
 {
 	TimeDelayEstimation::SignalData data = TimeDelayEstimation::SignalData(&m_buffer[0][0], &m_buffer[1][0], pos, pos + m_tdeWindow, false);
 	TimeDelayEstimation::DelayType align0, align1;
 
-	if (!data.CalculateAlignment(pos, &align0, NULL)) return false;
-	if (!data.CalculateAlignment(pos + m_tdeWindow, &align1, NULL)) return false;
-	data.SetAlignment((align0 + align1) / 2);
+	if (!data.CalculateAlignment(data.First(), &align0, NULL)) return false;
+	if (!data.CalculateAlignment(data.Last(), &align1, NULL)) return false;
 
+	data.SetAlignment((align0 + align1) / 2);
 	TimeDelayEstimation::DelayType align = data.Alignment();
 
 	UINT64 volume0 = 0, volume1 = 0;
@@ -367,16 +354,30 @@ bool DataConsumer::CalculateTDE(size_t pos, TimeDelayEstimation::DelayType* alig
 	for (size_t i = pos; i < pos + m_tdeWindow; i++)
 	{
 		volume0 += abs(data.Channel0(i));
-		volume1 += abs(data.Channel1(i + align));
+		volume1 += abs(data.Channel1(i,0));
 	}
 
-	TimeDelayEstimation::TDE tde(m_delayWindow);
+	TimeDelayEstimation::TDE tde(m_delayWindow, data);
 
-	int delay1 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::CC);
-	int delay2 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::ASDF);
-	//int delay3 = tde.FindDelay(data, TimeDelayEstimation::Algoritm::PHAT);
+	int delay1 = tde.FindDelay(TimeDelayEstimation::Algoritm::CC);
+	int delay2 = tde.FindDelay(TimeDelayEstimation::Algoritm::ASDF);
+	int delay3 = tde.FindDelay(TimeDelayEstimation::Algoritm::PHAT);
 
-	m_uiHandler(m_counter++, 0, delay1, delay2, 0, (int)data.Alignment(), volume0, volume1, m_devices[0].GetSamplesPerSec());
+	m_uiHandler(m_counter++, 0, delay1, delay2, delay3, (int)align, volume0, volume1, m_devices[0].GetSamplesPerSec());
+
+	if (m_storeSample)
+	{
+		Platform::String^ s1 = SAMPLE_FILE;
+		Platform::String^ s2 = align.ToString() + "\r\n";
+		for (size_t i = data.First(); i <= data.Last(); i++)
+		{
+			const TimeDelayEstimation::AudioDataItem& item = data.DataItem(i + align);
+			Platform::String^ s = data.TimeStamp0(i).ToString() + ";" + data.Channel0(i).ToString() + ";" +
+								  item.timestamp.ToString() + ";" + item.value.ToString() + "\r\n";
+			s2 = Platform::String::Concat(s2, s);
+		}
+		StoreData(s1, s2);
+	}
 	return true;
 }
 

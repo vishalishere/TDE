@@ -43,27 +43,27 @@ namespace TimeDelayEstimation {
 	class TDE
 	{
 	public:
-		TDE(size_t aMaxDelay);
-		~TDE() {}
+		TDE(size_t aMaxDelay, const SignalData& aData);
+		~TDE();
 
-		DelayType FindDelay(const SignalData& aData, Algoritm a);
-		DelayType FindPeak(const SignalData& aData);
+		DelayType FindDelay(Algoritm a);
+		DelayType FindPeak();
+		
+		TDEVector* CC() { return CrossCorrelation(); }
+		TDEVector* PHAT() { return PhaseTransform(); }
+		TDEVector* ASDF() { return AverageSquareDifference(); }
+	
+		CalculationStep* CC_Step(CalculationStep* aStep, const SignalData& aData) { return CrossCorrelation_Step(aStep); }
+		CalculationStep* PHAT_Step(CalculationStep* aStep, const SignalData& aData) { return PhaseTransform_Step(aStep); }
+		CalculationStep* ASDF_Step(CalculationStep* aStep, const SignalData& aData) { return AverageSquareDifference_Step(aStep); }
 
-		TDEVector* CC(const SignalData& aData) { return CrossCorrelation(aData); }
-		TDEVector* PHAT(const SignalData& aData) { return PhaseTransform(aData); }
-		TDEVector* ASDF(const SignalData& aData) { return AverageSquareDifference(aData); }
+		TDEVector* CrossCorrelation();
+		TDEVector* PhaseTransform();
+		TDEVector* AverageSquareDifference();
 
-		CalculationStep* CC_Step(CalculationStep* aStep, const SignalData& aData) { return CrossCorrelation_Step(aStep, aData); }
-		CalculationStep* PHAT_Step(CalculationStep* aStep, const SignalData& aData) { return PhaseTransform_Step(aStep, aData); }
-		CalculationStep* ASDF_Step(CalculationStep* aStep, const SignalData& aData) { return AverageSquareDifference_Step(aStep, aData); }
-
-		TDEVector* CrossCorrelation(const SignalData& aData);
-		TDEVector* PhaseTransform(const SignalData& aData);
-		TDEVector* AverageSquareDifference(const SignalData& aData);
-
-		CalculationStep* CrossCorrelation_Step(CalculationStep* aStep, const SignalData& aData);
-		CalculationStep* PhaseTransform_Step(CalculationStep* aStep, const SignalData& aData);
-		CalculationStep* AverageSquareDifference_Step(CalculationStep* aStep, const SignalData& aData);
+		CalculationStep* CrossCorrelation_Step(CalculationStep* aStep);
+		CalculationStep* PhaseTransform_Step(CalculationStep* aStep);
+		CalculationStep* AverageSquareDifference_Step(CalculationStep* aStep);
 
 		void Normalize(TDEVector* vec, CalcType level);
 
@@ -73,5 +73,8 @@ namespace TimeDelayEstimation {
 		DelayType m_windowStart;
 		DelayType m_windowEnd;
 
+		SignalValue* m_channel0;
+		SignalValue* m_channel1;
+		size_t m_dataLength;
 	};
 }

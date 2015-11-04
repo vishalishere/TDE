@@ -31,10 +31,17 @@ namespace TimeDelayEstimation {
 		void SetAlignment(DelayType alignment) { m_alignment = alignment; }
 
 		SignalValue Channel0(size_t position) const;
-		SignalValue Channel1(size_t position) const;
 		SignalValue Channel1(size_t position, DelayType delay) const;
 
+		UINT64 TimeStamp0(size_t position) const;
+		UINT64 TimeStamp1(size_t position) const;
+
+		const AudioDataItem& DataItem(size_t position) const;
+
 	private:
+
+		SignalValue Channel1(size_t position) const;
+
 		bool m_copy;
 
 		std::size_t m_min;

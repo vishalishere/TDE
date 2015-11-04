@@ -183,7 +183,7 @@ void Parser::TDE(int type, int size, int min, int max, int ref, int sig, GraphHa
 
 	TimeDelayEstimation::SignalData data(iData->at(ref), iData->at(sig), min, max, false);
 
-	TimeDelayEstimation::TDE tmp(size);
+	TimeDelayEstimation::TDE tmp(size,data);
 	TimeDelayEstimation::CalculationStep* step = NULL;
 
 	while (step == NULL || !step->done) {
