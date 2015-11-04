@@ -12,7 +12,7 @@ using namespace Wasapi;
 using namespace concurrency;
 
 #define MIN_AUDIO_THRESHOLD 400
-#define MAX_AUDIO_THRESHOLD	6400
+#define MAX_AUDIO_THRESHOLD	25600
 #define BUFFER_SIZE 44100
 #define DELAY_WINDOW_SIZE 50
 #define TDE_WINDOW 200
@@ -252,7 +252,7 @@ bool DataConsumer::ProcessData()
 		}
 		if (sample)
 		{
-			if (!CalculateTDE(max(0,sample_pos + START_OFFSET)))
+			if (!CalculateTDE(max(0,sample_pos + START_OFFSET), threshold))
 			{
 				HeartBeat(-1, 0, 0, 0, 0, 0, 0, 0);
 			}
@@ -338,7 +338,7 @@ void DataConsumer::AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT
 	}
 }
 
-bool DataConsumer::CalculateTDE(size_t pos)
+bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 {
 	TimeDelayEstimation::SignalData data = TimeDelayEstimation::SignalData(&m_buffer[0][0], &m_buffer[1][0], pos, pos + m_tdeWindow, false);
 	TimeDelayEstimation::DelayType align0, align1;
@@ -361,14 +361,14 @@ bool DataConsumer::CalculateTDE(size_t pos)
 
 	int delay1 = tde.FindDelay(TimeDelayEstimation::Algoritm::CC);
 	int delay2 = tde.FindDelay(TimeDelayEstimation::Algoritm::ASDF);
-	int delay3 = tde.FindDelay(TimeDelayEstimation::Algoritm::PHAT);
+	//int delay3 = tde.FindDelay(TimeDelayEstimation::Algoritm::PHAT);
 
-	m_uiHandler(m_counter++, 0, delay1, delay2, delay3, (int)align, volume0, volume1, m_devices[0].GetSamplesPerSec());
+	m_uiHandler(m_counter++, 0, delay1, delay2, 0, (int)align, volume0, volume1, m_devices[0].GetSamplesPerSec());
 
 	if (m_storeSample)
 	{
 		Platform::String^ s1 = SAMPLE_FILE;
-		Platform::String^ s2 = align.ToString() + "\r\n";
+		Platform::String^ s2 = "POS: " + pos.ToString() + " THRESHOLD: " + threshold.ToString() + " ALIGN: " + align.ToString() + " CC: " + delay1.ToString() + " ASDF: " + delay2.ToString() + "\r\n";
 		for (size_t i = data.First(); i <= data.Last(); i++)
 		{
 			const TimeDelayEstimation::AudioDataItem& item = data.DataItem(i + align);

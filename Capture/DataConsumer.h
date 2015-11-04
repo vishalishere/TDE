@@ -51,7 +51,7 @@ namespace Wasapi
 		void FlushCollector();
 
 		void AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT64 pos1, UINT64 pos2);
-		bool CalculateTDE(size_t pos);
+		bool CalculateTDE(size_t pos, uint32 threshold);
 		void StoreData(String^ fileName, String^ data);
 
 		void Worker();
