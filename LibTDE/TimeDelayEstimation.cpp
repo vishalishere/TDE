@@ -45,7 +45,7 @@ TDE::TDE(size_t aMaxDelay, const SignalData& aData)
 
 	long align = aData.Alignment();
 
-	for (size_t i = 0; i < m_maxDelay; i++)
+	for (size_t i = 0; i < (size_t)m_maxDelay; i++)
 	{
 		size_t pos = first - m_maxDelay + i;
 		AudioDataItem item0, item1;
@@ -64,7 +64,7 @@ TDE::TDE(size_t aMaxDelay, const SignalData& aData)
 		m_channel0[i] = item0.value;
 		m_channel1[i + m_maxDelay] = item1.value;
 	}
-	for (size_t i = 0; i < m_maxDelay; i++)
+	for (size_t i = 0; i < (size_t)m_maxDelay; i++)
 	{
 		size_t pos = first + m_dataLength + i;
 		AudioDataItem item0, item1;

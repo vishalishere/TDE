@@ -50,7 +50,7 @@ namespace Wasapi
 	private:
 		~DataConsumer();
 
-		void HeartBeat(HeartBeatType status, int delta = 0, int msg0 = 0, int msg1 = 0, int msg2 = 0, int msg3 = 0, UINT64 msg4 = 0, UINT64 msg5 = 0);
+		void HeartBeat(HeartBeatType status, int delta = 0, int msg0 = 0, int msg1 = 0, int msg2 = 0, long msg3 = 0, UINT64 msg4 = 0, UINT64 msg5 = 0);
 
 		Status HandlePackets();
 		bool ProcessData();

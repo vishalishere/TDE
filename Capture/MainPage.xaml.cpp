@@ -75,7 +75,7 @@ void SoundCapture::MainPage::Start()
 			text7->Text = i6.ToString();
 			text8->Text = i7.ToString();
 
-			if (i1 == -3)
+			if ((HeartBeatType)i1 == HeartBeatType::BUFFERING)
 			{
 				label1->Text = "TIME STAMP 0";
 				label2->Text = "TIME STAMP 1";
@@ -86,22 +86,22 @@ void SoundCapture::MainPage::Start()
 				label2->Text = "VOLUME";
 			}
 
-			UINT64 vol = i6/40;
+			UINT64 vol = i6/20;
 			if (vol > 800) vol = 800;
 
-			if (i1 == 0)
+			if ((HeartBeatType)i1 == HeartBeatType::DATA)
 			{
 				if (canvas->Children->Size > 2)
 				{
 					canvas->Children->RemoveAt(0);
 				}
 			}
-			else if (i1 != -3 && canvas->Children->Size > 0)
+			else if ((HeartBeatType)i1 != HeartBeatType::BUFFERING && canvas->Children->Size > 0)
 			{
 				canvas->Children->RemoveAt(0);
 			}
 
-			if (i1 == 0 && vol > 5 && (i3 > i2 - 3 && i3 < i2 + 3))
+			if ((HeartBeatType)i1 == HeartBeatType::DATA && vol > 5 && (i3 > i2 - 3 && i3 < i2 + 3))
 			{
 				Direction(i8, 0.4, -1 * (i2+i3)/2, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
 				m_sampleCount++;

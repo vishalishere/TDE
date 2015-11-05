@@ -15,9 +15,9 @@ using namespace concurrency;
 #define MAX_AUDIO_THRESHOLD	32000
 #define BUFFER_SIZE 44100
 #define DELAY_WINDOW_SIZE 50
-#define TDE_WINDOW 200
-#define START_OFFSET -10
-#define STORE_SAMPLE 1
+#define TDE_WINDOW 300
+#define START_OFFSET -60
+#define STORE_SAMPLE 0
 #define SAMPLE_FILE "SAMPLE.TXT"
 
 DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^ func) :
@@ -352,7 +352,7 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 	UINT64 volume = 0;
 	for (size_t i = data.First(); i <= data.Last(); i++)
 	{
-		volume += data.Value(i);
+		volume += abs(data.Value(i));
 	}
 
 	TimeDelayEstimation::DelayType align = (align0 + align1) / 2;
@@ -364,7 +364,7 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 	int delay2 = tde.FindDelay(TimeDelayEstimation::Algoritm::ASDF);
 	int delay3 = tde.FindDelay(TimeDelayEstimation::Algoritm::PEAK);
 
-	m_uiHandler(m_counter++, (int)HeartBeatType::DATA, delay1, delay2, delay3, (int)align, threshold, threshold, m_devices[0].GetSamplesPerSec());
+	m_uiHandler(m_counter++, (int)HeartBeatType::DATA, delay1, delay2, delay3, (int)align, threshold, volume, m_devices[0].GetSamplesPerSec());
 	
 	if (m_storeSample)
 	{
@@ -378,8 +378,7 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 			data.DataItem1(i + align, &item1, item0.timestamp);
 
 			Platform::String^ s = item0.timestamp.ToString() + "\t" + item0.value.ToString() + "\t" +
-								  item1.timestamp.ToString() + "\t" + item1.value.ToString() + "\t" +
-				(item0.timestamp > item1.timestamp ? item0.timestamp - item1.timestamp : item1.timestamp - item0.timestamp).ToString() + "\r\n";
+								  item1.timestamp.ToString() + "\t" + item1.value.ToString() + "\r\n";
 			s2 = Platform::String::Concat(s2, s);
 		}
 		StoreData(s1, s2);
@@ -398,7 +397,7 @@ void DataConsumer::StoreData(String^ fileName, String^ data)
 	});	
 }
 
-void DataConsumer::HeartBeat(HeartBeatType status, int delta, int msg0, int msg1, int msg2, int msg3, UINT64 msg4, UINT64 msg5)
+void DataConsumer::HeartBeat(HeartBeatType status, int delta, int msg0, int msg1, int msg2, long msg3, UINT64 msg4, UINT64 msg5)
 {
 	ULONGLONG tick = GetTickCount64();
 	if (tick - m_tick > delta)
