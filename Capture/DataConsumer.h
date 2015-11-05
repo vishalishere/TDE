@@ -14,7 +14,16 @@ namespace Wasapi
 {
 	static Windows::Foundation::IAsyncAction^ WorkItem = nullptr;
 
-	public delegate void UIHandler(int, int, int, int, int, int, UINT64, UINT64, int);
+	enum class HeartBeatType
+	{
+		DATA,
+		BUFFERING,
+		DEVICE_ERROR,
+		SILENCE,
+		INVALID
+	};
+
+	public delegate void UIHandler(uint32, int, int, int, int, int, UINT64, UINT64, uint32);
 
 	ref class DataConsumer sealed
 	{
@@ -41,7 +50,7 @@ namespace Wasapi
 	private:
 		~DataConsumer();
 
-		void HeartBeat(int status, int delta, int msg0, int msg1, int msg2, int msg3, UINT64 msg4, UINT64 msg5);
+		void HeartBeat(HeartBeatType status, int delta = 0, int msg0 = 0, int msg1 = 0, int msg2 = 0, int msg3 = 0, UINT64 msg4 = 0, UINT64 msg5 = 0);
 
 		Status HandlePackets();
 		bool ProcessData();
@@ -72,7 +81,7 @@ namespace Wasapi
 
 		uint32 m_minAudioThreshold;
 		uint32 m_maxAudioThreshold;
-		uint32 m_packetCounter;
+		size_t m_packetCounter;
 		uint32 m_discontinuityCounter;
 		uint32 m_dataRemovalCounter;
 

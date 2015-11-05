@@ -43,18 +43,34 @@ TDE::TDE(size_t aMaxDelay, const SignalData& aData)
 	m_channel0 = new SignalValue[m_dataLength];
 	m_channel1 = new SignalValue[m_dataLength + 2 * m_maxDelay];
 
+	long align = aData.Alignment();
+
 	for (size_t i = 0; i < m_maxDelay; i++)
 	{
-		m_channel1[i] = aData.Channel1(first - m_maxDelay + i, 0);
+		size_t pos = first - m_maxDelay + i;
+		AudioDataItem item0, item1;
+
+		aData.DataItem0(pos, &item0);
+		aData.DataItem1(pos + align, &item1, item0.timestamp);
+
+		m_channel1[i] = item1.value;
 	}
 	for (size_t i = 0; i < m_dataLength; i++)
 	{ 
-		m_channel0[i] = aData.Channel0(first + i);
-		m_channel1[i + m_maxDelay] = aData.Channel1(first + i, 0);
+		AudioDataItem item0, item1;
+		aData.DataItem0(first + i, &item0);
+		aData.DataItem1(first + i + align, &item1, item0.timestamp);
+
+		m_channel0[i] = item0.value;
+		m_channel1[i + m_maxDelay] = item1.value;
 	}
 	for (size_t i = 0; i < m_maxDelay; i++)
 	{
-		m_channel1[i + m_dataLength + m_maxDelay] = aData.Channel1(first + m_dataLength + i, 0);
+		size_t pos = first + m_dataLength + i;
+		AudioDataItem item0, item1;
+		aData.DataItem0(pos, &item0);
+		aData.DataItem1(pos + align, &item1, item0.timestamp);
+		m_channel1[i + m_dataLength + m_maxDelay] = item1.value;
 	}
 }
 
@@ -100,20 +116,24 @@ DelayType TDE::FindPeak()
 
 	for (size_t position = 0; position < m_dataLength; position++)
 	{
-		CalcType val0 = abs(m_channel0[position]);
-		CalcType val1 = abs(m_channel1[position + m_maxDelay]); 
-		if (val0 > value0Max)
+		CalcType val = abs(m_channel0[position]);
+		if (val > value0Max)
 		{
-			value0Max = val0;
+			value0Max = val;
 			index0 = position;
 		}
-		if (val1 > value1Max)
+	}
+
+	for (size_t position = 0; position < m_dataLength + 2 * m_maxDelay; position++)
+	{
+		CalcType val = abs(m_channel1[position]);
+		if (val > value1Max)
 		{
-			value1Max = val1;
+			value1Max = val;
 			index1 = position;
 		}
 	}
-	return index1 - index0;
+	return (DelayType)index1 - ((DelayType)index0 + m_maxDelay);
 }
 
 TDEVector* TDE::CrossCorrelation() 

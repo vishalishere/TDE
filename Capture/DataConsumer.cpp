@@ -11,8 +11,8 @@ using namespace Wasapi;
 
 using namespace concurrency;
 
-#define MIN_AUDIO_THRESHOLD 400
-#define MAX_AUDIO_THRESHOLD	25600
+#define MIN_AUDIO_THRESHOLD 500
+#define MAX_AUDIO_THRESHOLD	32000
 #define BUFFER_SIZE 44100
 #define DELAY_WINDOW_SIZE 50
 #define TDE_WINDOW 200
@@ -91,7 +91,7 @@ void DataConsumer::Worker()
 					m_audioDataLast[i] = last;
 				}
 			}
-			if (error) HeartBeat(-4, 0, 0, 0, 0, 0, 0, 0);
+			if (error) HeartBeat(HeartBeatType::DEVICE_ERROR);
 			bool loop = true;
 			while(loop)
 			{ 
@@ -113,7 +113,7 @@ void DataConsumer::Worker()
 					break;
 				}
 			}
-			HeartBeat(-3, 5000, m_packetCounter, m_discontinuityCounter, m_dataRemovalCounter, 0, m_devices[0].GetPosition(), m_devices[1].GetPosition());
+			HeartBeat(HeartBeatType::BUFFERING, 10000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter, 0, m_devices[0].GetPosition(), m_devices[1].GetPosition());
 
 			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
 		}
@@ -226,7 +226,10 @@ bool DataConsumer::ProcessData()
 
 		for (size_t i = 0; i < m_numberOfDevices; i++)
 		{
-			for (size_t j = 0; j < m_devices[i].GetChannels(); j++) if (m_buffer[i][j][0].timestamp > latestBegin) latestBegin = m_buffer[i][j][0].timestamp;
+			for (size_t j = 0; j < m_devices[i].GetChannels(); j++)
+			{
+				if (m_buffer[i][j][0].timestamp > latestBegin) latestBegin = m_buffer[i][j][0].timestamp;
+			}
 		}
 
 		bool sample = false;
@@ -252,12 +255,12 @@ bool DataConsumer::ProcessData()
 		}
 		if (sample)
 		{
-			if (!CalculateTDE(max(0,sample_pos + START_OFFSET), threshold))
+			if (!CalculateTDE(min(smallestBuffer-(m_delayWindow+m_tdeWindow),max(m_delayWindow,sample_pos + START_OFFSET)), threshold))
 			{
-				HeartBeat(-1, 0, 0, 0, 0, 0, 0, 0);
+				HeartBeat(HeartBeatType::INVALID);
 			}
 		}
-		else HeartBeat(-2, 1000, 0, 0, 0, 0, 0, 0);
+		else HeartBeat(HeartBeatType::SILENCE, 2000);
 			
 		FlushBuffer();
 		FlushCollector();		
@@ -346,38 +349,42 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 	if (!data.CalculateAlignment(data.First(), &align0, NULL)) return false;
 	if (!data.CalculateAlignment(data.Last(), &align1, NULL)) return false;
 
-	data.SetAlignment((align0 + align1) / 2);
-	TimeDelayEstimation::DelayType align = data.Alignment();
-
-	UINT64 volume0 = 0, volume1 = 0;
-
-	for (size_t i = pos; i < pos + m_tdeWindow; i++)
+	UINT64 volume = 0;
+	for (size_t i = data.First(); i <= data.Last(); i++)
 	{
-		volume0 += abs(data.Channel0(i));
-		volume1 += abs(data.Channel1(i,0));
+		volume += data.Value(i);
 	}
+
+	TimeDelayEstimation::DelayType align = (align0 + align1) / 2;
+	data.SetAlignment(align);
 
 	TimeDelayEstimation::TDE tde(m_delayWindow, data);
 
 	int delay1 = tde.FindDelay(TimeDelayEstimation::Algoritm::CC);
 	int delay2 = tde.FindDelay(TimeDelayEstimation::Algoritm::ASDF);
-	//int delay3 = tde.FindDelay(TimeDelayEstimation::Algoritm::PHAT);
+	int delay3 = tde.FindDelay(TimeDelayEstimation::Algoritm::PEAK);
 
-	m_uiHandler(m_counter++, 0, delay1, delay2, 0, (int)align, volume0, volume1, m_devices[0].GetSamplesPerSec());
-
+	m_uiHandler(m_counter++, (int)HeartBeatType::DATA, delay1, delay2, delay3, (int)align, threshold, threshold, m_devices[0].GetSamplesPerSec());
+	
 	if (m_storeSample)
 	{
 		Platform::String^ s1 = SAMPLE_FILE;
-		Platform::String^ s2 = "POS: " + pos.ToString() + " THRESHOLD: " + threshold.ToString() + " ALIGN: " + align.ToString() + " CC: " + delay1.ToString() + " ASDF: " + delay2.ToString() + "\r\n";
-		for (size_t i = data.First(); i <= data.Last(); i++)
+		Platform::String^ s2 = "POS: " + pos.ToString() + " THRESHOLD: " + threshold.ToString() + " ALIGN: " + align.ToString() + 
+			" CC: " + delay1.ToString() + " ASDF: " + delay2.ToString() + " PEAK: " + delay3.ToString() + "\r\n";
+		for (size_t i = data.First() - m_delayWindow; i <= data.Last() + m_delayWindow; i++)
 		{
-			const TimeDelayEstimation::AudioDataItem& item = data.DataItem(i + align);
-			Platform::String^ s = data.TimeStamp0(i).ToString() + ";" + data.Channel0(i).ToString() + ";" +
-								  item.timestamp.ToString() + ";" + item.value.ToString() + "\r\n";
+			TimeDelayEstimation::AudioDataItem item0, item1;
+			data.DataItem0(i, &item0);
+			data.DataItem1(i + align, &item1, item0.timestamp);
+
+			Platform::String^ s = item0.timestamp.ToString() + "\t" + item0.value.ToString() + "\t" +
+								  item1.timestamp.ToString() + "\t" + item1.value.ToString() + "\t" +
+				(item0.timestamp > item1.timestamp ? item0.timestamp - item1.timestamp : item1.timestamp - item0.timestamp).ToString() + "\r\n";
 			s2 = Platform::String::Concat(s2, s);
 		}
 		StoreData(s1, s2);
 	}
+	
 	return true;
 }
 
@@ -391,12 +398,12 @@ void DataConsumer::StoreData(String^ fileName, String^ data)
 	});	
 }
 
-void DataConsumer::HeartBeat(int status, int delta, int msg0, int msg1, int msg2, int msg3, UINT64 msg4, UINT64 msg5)
+void DataConsumer::HeartBeat(HeartBeatType status, int delta, int msg0, int msg1, int msg2, int msg3, UINT64 msg4, UINT64 msg5)
 {
 	ULONGLONG tick = GetTickCount64();
 	if (tick - m_tick > delta)
 	{
-		m_uiHandler(m_counter++, status, msg0, msg1, msg2, msg3, msg4, msg5, 44100);
+		m_uiHandler(m_counter++, (int)status, msg0, msg1, msg2, msg3, msg4, msg5, 44100);
 		m_tick = tick;
 		m_packetCounter = 0;
 		m_discontinuityCounter = 0;

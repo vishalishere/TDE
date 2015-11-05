@@ -55,18 +55,18 @@ void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int 
 
 void SoundCapture::MainPage::Start()
 {
-	Wasapi::UIHandler^ uiHandler = ref new Wasapi::UIHandler([this](int i0, int i1, int i2, int i3, int i4, int i5, UINT64 i6, UINT64 i7, int i8)
+	Wasapi::UIHandler^ uiHandler = ref new Wasapi::UIHandler([this](uint32 i0, int i1, int i2, int i3, int i4, int i5, UINT64 i6, UINT64 i7, uint32 i8)
 	{
 		auto uiDelegate = [this, i0, i1, i2, i3, i4, i5, i6, i7, i8]()
 		{
 			text1->Text = i0.ToString();
-			switch (i1)
+			switch ((HeartBeatType)i1)
 			{
-			case 0: text2->Text = "DATA"; break;
-			case -1: text2->Text = "INVALID"; break;
-			case -2: text2->Text = "SILENCE"; break;
-			case -3: text2->Text = "BUFFERING"; break;
-			case -4: text2->Text = "ERROR"; break;
+			case HeartBeatType::DATA: text2->Text = "DATA"; break;
+			case HeartBeatType::INVALID: text2->Text = "INVALID"; break;
+			case HeartBeatType::SILENCE: text2->Text = "SILENCE"; break;
+			case HeartBeatType::BUFFERING: text2->Text = "BUFFERING"; break;
+			case HeartBeatType::DEVICE_ERROR: text2->Text = "ERROR"; break;
 			}
 			text3->Text = i2.ToString();
 			text4->Text = i3.ToString();
@@ -75,12 +75,23 @@ void SoundCapture::MainPage::Start()
 			text7->Text = i6.ToString();
 			text8->Text = i7.ToString();
 
-			UINT64 vol = (i6+i7)/400;
+			if (i1 == -3)
+			{
+				label1->Text = "TIME STAMP 0";
+				label2->Text = "TIME STAMP 1";
+			}
+			else
+			{
+				label1->Text = "THRESHOLD";
+				label2->Text = "VOLUME";
+			}
+
+			UINT64 vol = i6/40;
 			if (vol > 800) vol = 800;
 
 			if (i1 == 0)
 			{
-				if (canvas->Children->Size > 4)
+				if (canvas->Children->Size > 2)
 				{
 					canvas->Children->RemoveAt(0);
 				}
@@ -90,9 +101,9 @@ void SoundCapture::MainPage::Start()
 				canvas->Children->RemoveAt(0);
 			}
 
-			if (i1 == 0 && vol > 5 /*&& (i3 > i2 - 3 && i3 < i2 + 3)*/)
+			if (i1 == 0 && vol > 5 && (i3 > i2 - 3 && i3 < i2 + 3))
 			{
-				Direction(i8, 0.3, -1 * (i2+i3)/2, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
+				Direction(i8, 0.4, -1 * (i2+i3)/2, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
 				m_sampleCount++;
 				text9->Text = m_sampleCount.ToString();
 			}	
@@ -111,9 +122,4 @@ void SoundCapture::MainPage::App_Resuming(Object^ sender, Object^ e)
 void SoundCapture::MainPage::App_Suspending(Object^ sender, SuspendingEventArgs^ e)
 {
 	m_wasapiEngine->Finish();
-}
-
-void SoundCapture::MainPage::Button_Click(Platform::Object^ sender, Windows::UI::Xaml::RoutedEventArgs^ e)
-{
-	canvas->Children->Clear();
 }

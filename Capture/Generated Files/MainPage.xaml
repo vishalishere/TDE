@@ -29,22 +29,21 @@
         <TextBlock Grid.Row="0" Grid.Column="2" Text = "STATUS"  FontSize="16"/>
         <TextBlock Grid.Row="0" Grid.Column="3" Text = "CC"  FontSize="16"/>
         <TextBlock Grid.Row="0" Grid.Column="4" Text = "ASDF"  FontSize="16"/>
-        <TextBlock Grid.Row="0" Grid.Column="5" Text = "PHAT"  FontSize="16"/>
+        <TextBlock Grid.Row="0" Grid.Column="5" Text = "PEAK"  FontSize="16"/>
         <TextBlock Grid.Row="0" Grid.Column="6" Text = "ALIGN"  FontSize="16"/>
-        <TextBlock Grid.Row="0" Grid.Column="7" Text = "VOL0"  FontSize="16"/>
-        <TextBlock Grid.Row="0" Grid.Column="8" Text = "VOL1"  FontSize="16"/>
+        <TextBlock x:ConnectionId='1' x:Name="label1" Grid.Row="0" Grid.Column="7" FontSize="16"/>
+        <TextBlock x:ConnectionId='2' x:Name="label2" Grid.Row="0" Grid.Column="8" FontSize="16"/>
         <TextBlock Grid.Row="0" Grid.Column="9" Text = "COUNT"  FontSize="16"/>
-        <Button x:ConnectionId='1' Grid.Row="0" Grid.Column="0" FontSize="8"                      Width="30" Height="20" Margin="5"/>
-        <TextBlock x:ConnectionId='2' x:Name="text1" Grid.Row="1" Grid.Column="1" Text = "-"  FontSize="16"/>
-        <TextBlock x:ConnectionId='3' x:Name="text2" Grid.Row="1" Grid.Column="2" Text = "-"  FontSize="16"/>
-        <TextBlock x:ConnectionId='4' x:Name="text3" Grid.Row="1" Grid.Column="3" Text = "-"  FontSize="16"/>
-        <TextBlock x:ConnectionId='5' x:Name="text4" Grid.Row="1" Grid.Column="4" Text = "-"  FontSize="16"/>
-        <TextBlock x:ConnectionId='6' x:Name="text5" Grid.Row="1" Grid.Column="5" Text = "-"  FontSize="16"/>
-        <TextBlock x:ConnectionId='7' x:Name="text6" Grid.Row="1" Grid.Column="6" Text = "-"  FontSize="16"/>
-        <TextBlock x:ConnectionId='8' x:Name="text7" Grid.Row="1" Grid.Column="7" Text = "-"  FontSize="16"/>
-        <TextBlock x:ConnectionId='9' x:Name="text8" Grid.Row="1" Grid.Column="8" Text = "-"  FontSize="16"/>
-        <TextBlock x:ConnectionId='10' x:Name="text9" Grid.Row="1" Grid.Column="9" Text = "-"  FontSize="16"/>
-        <Canvas x:ConnectionId='11' x:Name="canvas" Grid.Row="2" Grid.Column="0" Width="1600" Height="800"/>
+        <TextBlock x:ConnectionId='3' x:Name="text1" Grid.Row="1" Grid.Column="1" Text = "-"  FontSize="16"/>
+        <TextBlock x:ConnectionId='4' x:Name="text2" Grid.Row="1" Grid.Column="2" Text = "-"  FontSize="16"/>
+        <TextBlock x:ConnectionId='5' x:Name="text3" Grid.Row="1" Grid.Column="3" Text = "-"  FontSize="16"/>
+        <TextBlock x:ConnectionId='6' x:Name="text4" Grid.Row="1" Grid.Column="4" Text = "-"  FontSize="16"/>
+        <TextBlock x:ConnectionId='7' x:Name="text5" Grid.Row="1" Grid.Column="5" Text = "-"  FontSize="16"/>
+        <TextBlock x:ConnectionId='8' x:Name="text6" Grid.Row="1" Grid.Column="6" Text = "-"  FontSize="16"/>
+        <TextBlock x:ConnectionId='9' x:Name="text7" Grid.Row="1" Grid.Column="7" Text = "-"  FontSize="16"/>
+        <TextBlock x:ConnectionId='10' x:Name="text8" Grid.Row="1" Grid.Column="8" Text = "-"  FontSize="16"/>
+        <TextBlock x:ConnectionId='11' x:Name="text9" Grid.Row="1" Grid.Column="9" Text = "-"  FontSize="16"/>
+        <Canvas x:ConnectionId='12' x:Name="canvas" Grid.Row="2" Grid.Column="0" Width="1600" Height="800"/>
     </Grid>
 </Page>
 

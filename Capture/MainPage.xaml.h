@@ -32,7 +32,6 @@ namespace SoundCapture
 		
 		void App_Resuming(Object^ sender, Object^ e);
 		void App_Suspending(Object^ sender, SuspendingEventArgs^ e);
-		void Button_Click(Platform::Object^ sender, Windows::UI::Xaml::RoutedEventArgs^ e);
 
 	private:
 		UINT64 m_sampleCount;

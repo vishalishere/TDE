@@ -515,7 +515,7 @@ HRESULT WASAPICapture::OnAudioSampleRequested(Platform::Boolean IsSilence)
         }
 
 		// HANDLE AUDIO DATA
-		m_streams->AddData(m_CaptureDeviceID, Data, cbBytesToCapture, u64QPCPosition, dwCaptureFlags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, dwCaptureFlags & AUDCLNT_BUFFERFLAGS_SILENT);
+		m_streams->AddData(m_CaptureDeviceID, Data, cbBytesToCapture, u64QPCPosition, (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0, (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_SILENT) != 0);
 
         // Release buffer back
         m_AudioCaptureClient->ReleaseBuffer( FramesAvailable );

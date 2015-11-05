@@ -53,9 +53,9 @@ namespace TimeDelayEstimation {
 		TDEVector* PHAT() { return PhaseTransform(); }
 		TDEVector* ASDF() { return AverageSquareDifference(); }
 	
-		CalculationStep* CC_Step(CalculationStep* aStep, const SignalData& aData) { return CrossCorrelation_Step(aStep); }
-		CalculationStep* PHAT_Step(CalculationStep* aStep, const SignalData& aData) { return PhaseTransform_Step(aStep); }
-		CalculationStep* ASDF_Step(CalculationStep* aStep, const SignalData& aData) { return AverageSquareDifference_Step(aStep); }
+		CalculationStep* CC_Step(CalculationStep* aStep) { return CrossCorrelation_Step(aStep); }
+		CalculationStep* PHAT_Step(CalculationStep* aStep) { return PhaseTransform_Step(aStep); }
+		CalculationStep* ASDF_Step(CalculationStep* aStep) { return AverageSquareDifference_Step(aStep); }
 
 		TDEVector* CrossCorrelation();
 		TDEVector* PhaseTransform();
