@@ -34,8 +34,12 @@ MainPage::MainPage() : m_sampleCount(0)
 	Application::Current->Resuming += ref new EventHandler<Platform::Object^>(this, &MainPage::App_Resuming);
 	Application::Current->Suspending += ref new SuspendingEventHandler(this, &MainPage::App_Suspending);
 
-	m_wasapiEngine = ref new WASAPIEngine();
-	Start();
+	TimeSpan ts;
+	ts.Duration = 10000000;
+	iTimer = ref new DispatcherTimer();
+	iTimer->Interval = ts;
+	iTimer->Tick += ref new EventHandler<Platform::Object^>(this, &MainPage::Tick);
+	iTimer->Start();
 }
 
 void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int x, int length, SolidColorBrush^ color) {
@@ -122,4 +126,20 @@ void SoundCapture::MainPage::App_Resuming(Object^ sender, Object^ e)
 void SoundCapture::MainPage::App_Suspending(Object^ sender, SuspendingEventArgs^ e)
 {
 	m_wasapiEngine->Finish();
+}
+
+void SoundCapture::MainPage::Tick(Object^ sender, Object^ e)
+{
+	if (m_sampleCount == 10)
+	{
+		text2->Text = "STARTED";
+		iTimer->Stop();
+		m_wasapiEngine = ref new WASAPIEngine();
+		Start();
+	}
+	else
+	{
+		text2->Text = (10 - m_sampleCount).ToString();
+		m_sampleCount++;
+	}
 }

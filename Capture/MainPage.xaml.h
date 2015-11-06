@@ -9,6 +9,7 @@
 #include "WASAPIEngine.h"
 
 using namespace Wasapi;
+using namespace Windows::UI::Xaml;
 using namespace Windows::UI::Xaml::Media;
 
 using namespace Windows::ApplicationModel;
@@ -33,7 +34,11 @@ namespace SoundCapture
 		void App_Resuming(Object^ sender, Object^ e);
 		void App_Suspending(Object^ sender, SuspendingEventArgs^ e);
 
+		void Tick(Object^ sender, Object^ e);
+
 	private:
 		UINT64 m_sampleCount;
+
+		DispatcherTimer^ iTimer;
 	};
 }
