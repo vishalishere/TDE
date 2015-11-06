@@ -29,12 +29,11 @@
         <TextBlock Grid.Row="0" Grid.Column="2" Text = "STATUS"  FontSize="16"/>
         <TextBlock Grid.Row="0" Grid.Column="3" Text = "CC"  FontSize="16"/>
         <TextBlock Grid.Row="0" Grid.Column="4" Text = "ASDF"  FontSize="16"/>
-        <TextBlock Grid.Row="0" Grid.Column="5" Text = "PHAT"  FontSize="16"/>
+        <TextBlock Grid.Row="0" Grid.Column="5" Text = "PEAK"  FontSize="16"/>
         <TextBlock Grid.Row="0" Grid.Column="6" Text = "ALIGN"  FontSize="16"/>
-        <TextBlock Grid.Row="0" Grid.Column="7" Text = "VOL0"  FontSize="16"/>
-        <TextBlock Grid.Row="0" Grid.Column="8" Text = "VOL1"  FontSize="16"/>
+        <TextBlock x:Name="label1" Grid.Row="0" Grid.Column="7" FontSize="16"/>
+        <TextBlock x:Name="label2" Grid.Row="0" Grid.Column="8" FontSize="16"/>
         <TextBlock Grid.Row="0" Grid.Column="9" Text = "COUNT"  FontSize="16"/>
-        <Button Grid.Row="0" Grid.Column="0" FontSize="8" Click="Button_Click" Width="30" Height="20" Margin="5"/>
         <TextBlock x:Name="text1" Grid.Row="1" Grid.Column="1" Text = "-"  FontSize="16"/>
         <TextBlock x:Name="text2" Grid.Row="1" Grid.Column="2" Text = "-"  FontSize="16"/>
         <TextBlock x:Name="text3" Grid.Row="1" Grid.Column="3" Text = "-"  FontSize="16"/>

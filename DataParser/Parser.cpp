@@ -183,14 +183,15 @@ void Parser::TDE(int type, int size, int min, int max, int ref, int sig, GraphHa
 
 	TimeDelayEstimation::SignalData data(iData->at(ref), iData->at(sig), min, max, false);
 
-	TimeDelayEstimation::TDE tmp(size);
+	TimeDelayEstimation::TDE tmp(size,data);
+	
 	TimeDelayEstimation::CalculationStep* step = NULL;
 
 	while (step == NULL || !step->done) {
 		switch (type) {
-			case 0: step = tmp.CC_Step(step, data); break;
-			case 1: step = tmp.ASDF_Step(step, data); break;
-			default: step = tmp.PHAT_Step(step, data); break;
+			case 0: step = tmp.CC_Step(step); break;
+			case 1: step = tmp.ASDF_Step(step); break;
+			default: step = tmp.PHAT_Step(step); break;
 		}
 		
 		auto status = action->Status;
@@ -204,6 +205,18 @@ void Parser::TDE(int type, int size, int min, int max, int ref, int sig, GraphHa
 	Graph(step->data, func);
 	delete step;
 
+	/*
+	TimeDelayEstimation::TDEVector* ptr = NULL;
+
+	switch (type) {
+	case 0: ptr = tmp.CC(); break;
+	case 1: ptr = tmp.ASDF(); break;
+	default: ptr = tmp.PHAT(); break;
+	}
+
+	Graph(ptr, func);
+	delete ptr;
+	*/
 	GetSystemTimeAsFileTime(&endTime.fileTime);
 	int64 delta = (endTime.ul.QuadPart - beginTime.ul.QuadPart) / 10000;
 	msg(delta.ToString() + " ms");
@@ -222,19 +235,35 @@ void Parser::Sound(int min, int max, int ref, int sig, int width, int height, So
 
 	int maxLevel = 0;
 	for (int i = min; i < max; i++) {
-		if (abs(data.Channel0(i)) > maxLevel) maxLevel = abs(data.Channel0(i));
-		if (abs(data.Channel1(i, 0)) > maxLevel) maxLevel = abs(data.Channel1(i, 0));
+		TimeDelayEstimation::AudioDataItem item0, item1;
+
+		data.DataItem0(i, &item0);
+		data.DataItem1(i, &item1, item0.timestamp);
+
+		if (abs(item0.value) > maxLevel) maxLevel = abs(item0.value);
+		if (abs(item1.value) > maxLevel) maxLevel = abs(item1.value);
 	}
 	maxLevel /= height;
 
 	for (int i = 0; i < (max - min); i += max(1, (max - min) / width)) {
-		int min1 = data.Channel0(i + min) / maxLevel;
-		int max1 = data.Channel0(i + min) / maxLevel;
-		int min2 = (data.Channel1(i + min, 0)) / maxLevel;
-		int max2 = (data.Channel1(i + min, 0)) / maxLevel;
+
+		TimeDelayEstimation::AudioDataItem item0, item1;
+		data.DataItem0(i + min, &item0);
+		data.DataItem1(i + min, &item1, item0.timestamp);
+
+		int min1 = item0.value / maxLevel;
+		int max1 = item0.value / maxLevel;
+		int min2 = item1.value / maxLevel;
+		int max2 = item1.value / maxLevel;
 		for (int j = 1; j < (max - min) / width; j++) {
-			int val1 = data.Channel0(i + j + min) / maxLevel;
-			int val2 = data.Channel1(i + j + min, 0) / maxLevel;
+
+			TimeDelayEstimation::AudioDataItem item00, item11;
+			data.DataItem0(i + j + min, &item00);
+			data.DataItem1(i + j + min, &item11, item00.timestamp);
+
+
+			int val1 = item00.value / maxLevel;
+			int val2 = item11.value / maxLevel;
 			if (min1 > val1) min1 = val1;
 			if (max1 < val1) max1 = val1;
 			if (min2 > val2) min2 = val2;

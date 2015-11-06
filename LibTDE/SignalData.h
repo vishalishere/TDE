@@ -25,16 +25,21 @@ namespace TimeDelayEstimation {
 		size_t Last() const { return m_max - 1; }
 		size_t Length() const { return m_max-m_min; }
 
-		bool Align(size_t position);
 		bool CalculateAlignment(size_t position, DelayType* alignment, UINT64* delta);
 		long Alignment() const { return m_alignment; }
 		void SetAlignment(DelayType alignment) { m_alignment = alignment; }
 
-		SignalValue Channel0(size_t position) const;
-		SignalValue Channel1(size_t position) const;
-		SignalValue Channel1(size_t position, DelayType delay) const;
+		bool DataItem0(size_t position, AudioDataItem* item) const;
+		bool DataItem1(size_t position, AudioDataItem* item, UINT64 ts0) const;
+
+		SignalValue Value(size_t position) const;
 
 	private:
+
+		UINT64 Delta(UINT64 i0, UINT64 i1) const;
+
+	private:
+
 		bool m_copy;
 
 		std::size_t m_min;

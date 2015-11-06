@@ -33,6 +33,8 @@ namespace SoundCapture
     private:
         bool _contentLoaded;
     
+        private: ::Windows::UI::Xaml::Controls::TextBlock^ label1;
+        private: ::Windows::UI::Xaml::Controls::TextBlock^ label2;
         private: ::Windows::UI::Xaml::Controls::TextBlock^ text1;
         private: ::Windows::UI::Xaml::Controls::TextBlock^ text2;
         private: ::Windows::UI::Xaml::Controls::TextBlock^ text3;

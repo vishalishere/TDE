@@ -5,7 +5,13 @@ using namespace TimeDelayEstimation;
 
 CalculationStep::CalculationStep() : data(NULL), inbuf(NULL), outbuf(NULL), done(false), step(0) {}
 
-TDE::TDE(size_t aMaxDelay)
+CalculationStep::~CalculationStep() {
+	if (data != NULL) delete data;
+	if (inbuf != NULL) delete inbuf;
+	if (outbuf != NULL) delete outbuf;
+}
+
+TDE::TDE(size_t aMaxDelay, const SignalData& aData)
 {
 	if (aMaxDelay < 5)
 	{
@@ -31,23 +37,58 @@ TDE::TDE(size_t aMaxDelay)
 		m_windowStart = 5;
 		m_windowEnd = 2 * (DelayType)aMaxDelay - 4;
 	}
+	m_dataLength = aData.Length();
+	size_t first = aData.First();
+
+	m_channel0 = new SignalValue[m_dataLength];
+	m_channel1 = new SignalValue[m_dataLength + 2 * m_maxDelay];
+
+	long align = aData.Alignment();
+
+	for (size_t i = 0; i < (size_t)m_maxDelay; i++)
+	{
+		size_t pos = first - m_maxDelay + i;
+		AudioDataItem item0, item1;
+
+		aData.DataItem0(pos, &item0);
+		aData.DataItem1(pos + align, &item1, item0.timestamp);
+
+		m_channel1[i] = item1.value;
+	}
+	for (size_t i = 0; i < m_dataLength; i++)
+	{ 
+		AudioDataItem item0, item1;
+		aData.DataItem0(first + i, &item0);
+		aData.DataItem1(first + i + align, &item1, item0.timestamp);
+
+		m_channel0[i] = item0.value;
+		m_channel1[i + m_maxDelay] = item1.value;
+	}
+	for (size_t i = 0; i < (size_t)m_maxDelay; i++)
+	{
+		size_t pos = first + m_dataLength + i;
+		AudioDataItem item0, item1;
+		aData.DataItem0(pos, &item0);
+		aData.DataItem1(pos + align, &item1, item0.timestamp);
+		m_channel1[i + m_dataLength + m_maxDelay] = item1.value;
+	}
 }
 
-CalculationStep::~CalculationStep() {
-	if (data != NULL) delete data;
-	if (inbuf != NULL) delete inbuf;
-	if (outbuf != NULL) delete outbuf;
+TDE::~TDE()
+{
+	delete[] m_channel0;
+	delete[] m_channel1;
 }
 
-DelayType TDE::FindDelay(const SignalData& aData, Algoritm a)
+DelayType TDE::FindDelay(Algoritm a)
 {
 	TDEVector* v;
 	switch (a)
 	{
-	case Algoritm::CC: v = CrossCorrelation(aData); break;
-	case Algoritm::ASDF: v = AverageSquareDifference(aData); break;
-	case Algoritm::PHAT: v = PhaseTransform(aData); break;
-	default: return FindPeak(aData);
+	case Algoritm::CC: v = CrossCorrelation(); break;
+	case Algoritm::ASDF: v = AverageSquareDifference(); break;
+	case Algoritm::PHAT: v = PhaseTransform(); break;
+	default: return FindPeak();
 	}
 
 	CalcType value = v->at(m_maxDelay).value;
@@ -65,7 +106,7 @@ DelayType TDE::FindDelay(const SignalData& aData, Algoritm a)
 	return delay;
 }
 
-DelayType TDE::FindPeak(const SignalData& aData)
+DelayType TDE::FindPeak()
 {
 	CalcType value0Max = CalcZero;
 	CalcType value1Max = CalcZero;
@@ -73,33 +114,37 @@ DelayType TDE::FindPeak(const SignalData& aData)
 	size_t index0 = 0;
 	size_t index1 = 0;
 
-	for (size_t position = aData.First(); position < aData.Last() + 1; position++)
+	for (size_t position = 0; position < m_dataLength; position++)
 	{
-		CalcType val0 = abs(aData.Channel0(position - 1)) + abs(aData.Channel0(position)) + abs(aData.Channel0(position + 1));
-		CalcType val1 = abs(aData.Channel1(position - 1, 0)) + abs(aData.Channel1(position, 0)) + abs(aData.Channel1(position + 1, 0));
-		if (val0 > value0Max)
+		CalcType val = abs(m_channel0[position]);
+		if (val > value0Max)
 		{
-			value0Max = val0;
+			value0Max = val;
 			index0 = position;
 		}
-		if (val1 > value1Max)
+	}
+
+	for (size_t position = 0; position < m_dataLength + 2 * m_maxDelay; position++)
+	{
+		CalcType val = abs(m_channel1[position]);
+		if (val > value1Max)
 		{
-			value1Max = val1;
+			value1Max = val;
 			index1 = position;
 		}
 	}
-	return index1 - index0;
+	return (DelayType)index1 - ((DelayType)index0 + m_maxDelay);
 }
 
-TDEVector* TDE::CrossCorrelation(const SignalData& aData) 
+TDEVector* TDE::CrossCorrelation() 
 {
 	TDEVector* result = new TDEVector(2 * m_maxDelay + 1, { 0, CalcZero });
 	for (DelayType delay = -m_maxDelay; delay <= m_maxDelay; delay++) 
 	{
 		CalcType sum = 0;
-		for (size_t position = aData.First(); position < aData.Last() + 1; position++) 
+		for (size_t position = 0; position < m_dataLength; position++)
 		{
-			sum += (CalcType)aData.Channel0(position) * (CalcType)aData.Channel1(position, delay);
+			sum += (CalcType)m_channel0[position] * (CalcType)m_channel1[position + delay + m_maxDelay];
 		}
 		result->at(delay + m_maxDelay).delay = delay;
 		result->at(delay + m_maxDelay).value = sum;
@@ -107,9 +152,9 @@ TDEVector* TDE::CrossCorrelation(const SignalData& aData)
 	return result;
 }
 
-TDEVector* TDE::PhaseTransform(const SignalData& aData) 
+TDEVector* TDE::PhaseTransform() 
 {
-	TDEVector* result = CrossCorrelation(aData);
+	TDEVector* result = CrossCorrelation();
 	
 	int nfft = (int)result->size();
 	typedef kissfft<double> FFT;
@@ -131,24 +176,24 @@ TDEVector* TDE::PhaseTransform(const SignalData& aData)
 	return result;
 }
 
-TDEVector* TDE::AverageSquareDifference(const SignalData& aData) 
+TDEVector* TDE::AverageSquareDifference() 
 {
 	TDEVector* result = new TDEVector(2 * m_maxDelay + 1, { 0, CalcZero });
 	for (DelayType delay = -m_maxDelay; delay <= m_maxDelay; delay++) 
 	{
 		CalcType sum = 0;
-		for (size_t position = aData.First(); position < aData.Last() + 1; position++) 
+		for (size_t position = 0; position < m_dataLength; position++) 
 		{
-			CalcType diff = aData.Channel0(position) - aData.Channel1(position, delay);
+			CalcType diff = m_channel0[position] - m_channel1[position + delay + m_maxDelay];
 			sum += diff * diff;
 		}
 		result->at(delay + m_maxDelay).delay = delay;
-		result->at(delay + m_maxDelay).value = sum / aData.Length();
+		result->at(delay + m_maxDelay).value = sum / m_dataLength;
 	}
 	return result;
 }
 
-CalculationStep* TDE::CrossCorrelation_Step(CalculationStep* aStep, const SignalData& aData) 
+CalculationStep* TDE::CrossCorrelation_Step(CalculationStep* aStep) 
 {
 	CalculationStep* step = NULL;
 	if (aStep == NULL) 
@@ -163,9 +208,9 @@ CalculationStep* TDE::CrossCorrelation_Step(CalculationStep* aStep, const Signal
 		step->delay++;
 	}
 	CalcType sum = 0;
-	for (size_t position = aData.First(); position < aData.Last() + 1; position++) 
+	for (size_t position = 0; position < m_dataLength; position++) 
 	{
-		sum += (CalcType)aData.Channel0(position) * (CalcType)aData.Channel1(position, step->delay);
+		sum += (CalcType)m_channel0[position] * (CalcType)m_channel1[position + m_maxDelay + step->delay];
 	}
 	step->data->at(step->delay + m_maxDelay).delay = step->delay;
 	step->data->at(step->delay + m_maxDelay).value = sum;
@@ -177,16 +222,16 @@ CalculationStep* TDE::CrossCorrelation_Step(CalculationStep* aStep, const Signal
 	return step;
 }
 
-CalculationStep* TDE::PhaseTransform_Step(CalculationStep* aStep, const SignalData& aData) 
+CalculationStep* TDE::PhaseTransform_Step(CalculationStep* aStep) 
 {
 	typedef kissfft<double> FFT;
 	if (aStep == NULL) 
 	{
-		return CrossCorrelation_Step(aStep, aData);
+		return CrossCorrelation_Step(aStep);
 	}
 	else if (aStep->step==0)
 	{
-		CalculationStep* step = CrossCorrelation_Step(aStep, aData);
+		CalculationStep* step = CrossCorrelation_Step(aStep);
 		if (step->done) step->done = false;
 		else return step;
 	}
@@ -224,7 +269,7 @@ CalculationStep* TDE::PhaseTransform_Step(CalculationStep* aStep, const SignalDa
 	return aStep;
 }
 
-CalculationStep* TDE::AverageSquareDifference_Step(CalculationStep* aStep, const SignalData& aData) 
+CalculationStep* TDE::AverageSquareDifference_Step(CalculationStep* aStep) 
 {
 	CalculationStep* step = NULL;
 	if (aStep == NULL) 
@@ -239,13 +284,13 @@ CalculationStep* TDE::AverageSquareDifference_Step(CalculationStep* aStep, const
 		step->delay++;
 	}
 	CalcType sum = 0;
-	for (size_t position = aData.First(); position <= aData.Last(); position++) 
+	for (size_t position = 0; position < m_dataLength; position++) 
 	{
-		CalcType diff = aData.Channel0(position) - aData.Channel1(position, step->delay);
+		CalcType diff = m_channel0[position] - m_channel1[position + m_maxDelay + step->delay];
 		sum += diff * diff;
 	}
 	step->data->at(step->delay + m_maxDelay).delay = step->delay;
-	step->data->at(step->delay + m_maxDelay).value = sum / aData.Length();
+	step->data->at(step->delay + m_maxDelay).value = sum / m_dataLength;
 
 	if (step->delay == m_maxDelay) 
 	{

@@ -29,57 +29,60 @@ void ::SoundCapture::MainPage::Connect(int __connectionId, ::Platform::Object^ _
     {
         case 1:
             {
-                ::Windows::UI::Xaml::Controls::Button^ element1 = safe_cast<::Windows::UI::Xaml::Controls::Button^>(__target);
-                (safe_cast<::Windows::UI::Xaml::Controls::Button^>(element1))->Click += ref new ::Windows::UI::Xaml::RoutedEventHandler(this, (void (::SoundCapture::MainPage::*)
-                    (::Platform::Object^, ::Windows::UI::Xaml::RoutedEventArgs^))&MainPage::Button_Click);
+                this->label1 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 2:
             {
-                this->text1 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->label2 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 3:
             {
-                this->text2 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->text1 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 4:
             {
-                this->text3 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->text2 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 5:
             {
-                this->text4 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->text3 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 6:
             {
-                this->text5 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->text4 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 7:
             {
-                this->text6 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->text5 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 8:
             {
-                this->text7 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->text6 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 9:
             {
-                this->text8 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->text7 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 10:
             {
-                this->text9 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+                this->text8 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
             }
             break;
         case 11:
+            {
+                this->text9 = safe_cast<::Windows::UI::Xaml::Controls::TextBlock^>(__target);
+            }
+            break;
+        case 12:
             {
                 this->canvas = safe_cast<::Windows::UI::Xaml::Controls::Canvas^>(__target);
             }
