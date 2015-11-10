@@ -27,7 +27,7 @@ using namespace Windows::ApplicationModel::Activation;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
-MainPage::MainPage() : m_sampleCount(0), m_startCounter(0), m_bufferingCount(0)
+MainPage::MainPage() : m_sampleCount(0), m_startCounter(10), m_bufferingCount(0)
 {
 	InitializeComponent();
 
@@ -83,11 +83,15 @@ void SoundCapture::MainPage::Start()
 				break;
 			case HeartBeatType::DEVICE_ERROR: 
 				text2->Text = "ERROR"; 
-				ResetEngine();
+				ResetEngine(10);
+				break;
+			case HeartBeatType::NODEVICE:
+				text2->Text = "NO DEVICES";
+				ResetEngine(100);
 				break;
 			}
 
-			if (m_bufferingCount == 10) ResetEngine();
+			if (m_bufferingCount == 10) ResetEngine(10);
 
 			text3->Text = i2.ToString();
 			text4->Text = i3.ToString();
@@ -132,7 +136,7 @@ void SoundCapture::MainPage::Start()
 
 void SoundCapture::MainPage::App_Resuming(Object^ sender, Object^ e)
 {
-	ResetEngine();
+	ResetEngine(10);
 }
 
 void SoundCapture::MainPage::App_Suspending(Object^ sender, SuspendingEventArgs^ e)
@@ -143,7 +147,7 @@ void SoundCapture::MainPage::App_Suspending(Object^ sender, SuspendingEventArgs^
 
 void SoundCapture::MainPage::Tick(Object^ sender, Object^ e)
 {
-	if (m_startCounter == 10)
+	if (m_startCounter == 0)
 	{
 		text2->Text = "STARTED";
 		m_timer->Stop();
@@ -152,12 +156,12 @@ void SoundCapture::MainPage::Tick(Object^ sender, Object^ e)
 	}
 	else
 	{
-		text2->Text = (10 - m_startCounter).ToString();
-		m_startCounter++;
+		text2->Text = m_startCounter.ToString();
+		m_startCounter--;
 	}
 }
 
-void SoundCapture::MainPage::ResetEngine()
+void SoundCapture::MainPage::ResetEngine(uint16 counter)
 {
 	m_startCounter = 0;
 	m_wasapiEngine->Finish();
@@ -173,5 +177,6 @@ void SoundCapture::MainPage::ResetEngine()
 	text9->Text = "-";
 	text2->Text = "RESETTING";
 	canvas->Children->Clear();
+	m_startCounter = counter;
 	m_timer->Start();
 }
