@@ -43,7 +43,7 @@ MainPage::MainPage() : m_sampleCount(0), m_startCounter(0), m_bufferingCount(0)
 }
 
 void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int x, int length, SolidColorBrush^ color, int thickness) {
-	double val = (((double)(2*delay) / (2.0*rate)) * 343.0) / dist;
+	double val = (((double)delay / rate) * 343.0) / dist;
 	if (val > 1) val = 1;
 	if (val < -1) val = -1;
 	double ang = asin(val);
