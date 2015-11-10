@@ -27,7 +27,7 @@ using namespace Windows::ApplicationModel::Activation;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
-MainPage::MainPage() : m_sampleCount(0)
+MainPage::MainPage() : m_sampleCount(0), m_startCounter(0), m_bufferingCount(0)
 {
 	InitializeComponent();
 
@@ -36,13 +36,13 @@ MainPage::MainPage() : m_sampleCount(0)
 
 	TimeSpan ts;
 	ts.Duration = 10000000;
-	iTimer = ref new DispatcherTimer();
-	iTimer->Interval = ts;
-	iTimer->Tick += ref new EventHandler<Platform::Object^>(this, &MainPage::Tick);
-	iTimer->Start();
+	m_timer = ref new DispatcherTimer();
+	m_timer->Interval = ts;
+	m_timer->Tick += ref new EventHandler<Platform::Object^>(this, &MainPage::Tick);
+	m_timer->Start();
 }
 
-void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int x, int length, SolidColorBrush^ color) {
+void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int x, int length, SolidColorBrush^ color, int thickness) {
 	double val = (((double)(2*delay) / (2.0*rate)) * 343.0) / dist;
 	if (val > 1) val = 1;
 	if (val < -1) val = -1;
@@ -53,7 +53,7 @@ void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int 
 	line->X2 = line->X1 + sin(ang) * length;
 	line->Y2 = line->Y1 + cos(ang) * length;
 	line->Stroke = color;
-	line->StrokeThickness = 1;
+	line->StrokeThickness = thickness;
 	canvas->Children->Append(line);
 }
 
@@ -66,12 +66,29 @@ void SoundCapture::MainPage::Start()
 			text1->Text = i0.ToString();
 			switch ((HeartBeatType)i1)
 			{
-			case HeartBeatType::DATA: text2->Text = "DATA"; break;
-			case HeartBeatType::INVALID: text2->Text = "INVALID"; break;
-			case HeartBeatType::SILENCE: text2->Text = "SILENCE"; break;
-			case HeartBeatType::BUFFERING: text2->Text = "BUFFERING"; break;
-			case HeartBeatType::DEVICE_ERROR: text2->Text = "ERROR"; break;
+			case HeartBeatType::DATA:
+				text2->Text = "DATA"; 
+				m_bufferingCount = 0;
+				break;
+			case HeartBeatType::INVALID: 
+				text2->Text = "INVALID"; 
+				break;
+			case HeartBeatType::SILENCE:
+				text2->Text = "SILENCE"; 
+				m_bufferingCount = 0;
+				break;
+			case HeartBeatType::BUFFERING: 
+				text2->Text = "BUFFERING"; 
+				m_bufferingCount++;
+				break;
+			case HeartBeatType::DEVICE_ERROR: 
+				text2->Text = "ERROR"; 
+				ResetEngine();
+				break;
 			}
+
+			if (m_bufferingCount == 10) ResetEngine();
+
 			text3->Text = i2.ToString();
 			text4->Text = i3.ToString();
 			text5->Text = i4.ToString();
@@ -90,24 +107,19 @@ void SoundCapture::MainPage::Start()
 				label2->Text = "VOLUME";
 			}
 
-			UINT64 vol = i6/20;
-			if (vol > 800) vol = 800;
+			if ((HeartBeatType)i1 != HeartBeatType::BUFFERING)
+			{
+				canvas->Children->Clear();
+			}
 
 			if ((HeartBeatType)i1 == HeartBeatType::DATA)
 			{
-				if (canvas->Children->Size > 2)
-				{
-					canvas->Children->RemoveAt(0);
-				}
-			}
-			else if ((HeartBeatType)i1 != HeartBeatType::BUFFERING && canvas->Children->Size > 0)
-			{
-				canvas->Children->RemoveAt(0);
-			}
+				UINT64 vol = i6 / 20;
+				if (vol > 800) vol = 800;
 
-			if ((HeartBeatType)i1 == HeartBeatType::DATA && vol > 5 && (i3 > i2 - 3 && i3 < i2 + 3))
-			{
-				Direction(i8, 0.4, -1 * (i2+i3)/2, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Red));
+				Direction(i8, 0.4, -1 * i2, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Red), 4);
+				Direction(i8, 0.4, -1 * i3, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Green), 2);
+				Direction(i8, 0.4, -1 * i4, 800, (int)vol, ref new SolidColorBrush(Windows::UI::Colors::Blue), 1);
 				m_sampleCount++;
 				text9->Text = m_sampleCount.ToString();
 			}	
@@ -120,26 +132,46 @@ void SoundCapture::MainPage::Start()
 
 void SoundCapture::MainPage::App_Resuming(Object^ sender, Object^ e)
 {
-	//Start();
+	ResetEngine();
 }
 
 void SoundCapture::MainPage::App_Suspending(Object^ sender, SuspendingEventArgs^ e)
 {
 	m_wasapiEngine->Finish();
+	m_wasapiEngine = nullptr;
 }
 
 void SoundCapture::MainPage::Tick(Object^ sender, Object^ e)
 {
-	if (m_sampleCount == 10)
+	if (m_startCounter == 10)
 	{
 		text2->Text = "STARTED";
-		iTimer->Stop();
+		m_timer->Stop();
 		m_wasapiEngine = ref new WASAPIEngine();
 		Start();
 	}
 	else
 	{
-		text2->Text = (10 - m_sampleCount).ToString();
-		m_sampleCount++;
+		text2->Text = (10 - m_startCounter).ToString();
+		m_startCounter++;
 	}
+}
+
+void SoundCapture::MainPage::ResetEngine()
+{
+	m_startCounter = 0;
+	m_wasapiEngine->Finish();
+	m_wasapiEngine = nullptr;
+
+	text1->Text = "-";
+	text3->Text = "-";
+	text4->Text = "-";
+	text5->Text = "-";
+	text6->Text = "-";
+	text7->Text = "-";
+	text8->Text = "-";
+	text9->Text = "-";
+	text2->Text = "RESETTING";
+	canvas->Children->Clear();
+	m_timer->Start();
 }
