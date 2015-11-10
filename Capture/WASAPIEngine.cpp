@@ -86,9 +86,12 @@ void WASAPIEngine::Finish()
 		for (size_t i = 0; i < m_deviceList.size(); i++)
 		{
 			m_deviceList[i]->Capture->FinishCaptureAsync();
+			m_deviceList[i] = nullptr;
 		}
 		m_consumer->Finish();
+		m_consumer = nullptr;
 		m_collector->Finish();
+		m_collector = nullptr;
 	}
 	return;
 }
