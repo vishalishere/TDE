@@ -50,9 +50,6 @@
     <AppxManifest Include="Package.appxmanifest" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Analysis_TemporaryKey.pfx" />
-  </ItemGroup>
-  <ItemGroup>
     <Page Include="MainPage.xaml" />
   </ItemGroup>
   <ItemGroup>
@@ -68,5 +65,8 @@
     <Text Include="noteA1.csv" />
     <Text Include="noteA2.csv" />
     <Text Include="noteA3.csv" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Analysis_TemporaryKey.pfx" />
   </ItemGroup>
 </Project>
