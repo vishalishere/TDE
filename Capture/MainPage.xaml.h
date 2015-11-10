@@ -36,7 +36,7 @@ namespace SoundCapture
 
 		void Tick(Object^ sender, Object^ e);
 
-		void ResetEngine();
+		void ResetEngine(uint16 counter);
 
 	private:
 		UINT64 m_sampleCount;

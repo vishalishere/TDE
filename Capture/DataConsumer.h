@@ -20,7 +20,8 @@ namespace Wasapi
 		BUFFERING,
 		DEVICE_ERROR,
 		SILENCE,
-		INVALID
+		INVALID,
+		NODEVICE
 	};
 
 	public delegate void UIHandler(uint32, int, int, int, int, int, UINT64, UINT64, uint32);

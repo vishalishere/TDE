@@ -75,6 +75,7 @@ IAsyncAction^ WASAPIEngine::InitializeAsync(UIHandler^ func)
 				m_consumer = ref new DataConsumer(m_deviceList.size(), m_collector, func);
 				m_consumer->Start();
 			}
+			else func(0, int(Wasapi::HeartBeatType::NODEVICE),0,0,0,0,0,0,0);
 		});
 	});
 }

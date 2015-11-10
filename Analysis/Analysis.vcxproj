@@ -244,7 +244,6 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</DeploymentContent>
       <FileType>Document</FileType>
     </Text>
-    <None Include="Analysis_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\LockScreenLogo.scale-200.png" />
@@ -278,6 +277,9 @@
     <ProjectReference Include="..\DataParser\DataParser.vcxproj">
       <Project>{46f4ffc7-e478-42f1-886a-0a4934df5dcf}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Analysis_TemporaryKey.pfx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
