@@ -87,7 +87,7 @@ void SoundCapture::MainPage::Start()
 				break;
 			case HeartBeatType::NODEVICE:
 				text2->Text = "NO DEVICES";
-				ResetEngine(100);
+				Reboot();
 				break;
 			}
 
@@ -179,4 +179,24 @@ void SoundCapture::MainPage::ResetEngine(uint16 counter)
 	canvas->Children->Clear();
 	m_startCounter = counter;
 	m_timer->Start();
+}
+
+void SoundCapture::MainPage::Reboot()
+{
+	m_wasapiEngine->Finish();
+	m_wasapiEngine = nullptr;
+
+	text1->Text = "-";
+	text3->Text = "-";
+	text4->Text = "-";
+	text5->Text = "-";
+	text6->Text = "-";
+	text7->Text = "-";
+	text8->Text = "-";
+	text9->Text = "-";
+	text2->Text = "REBOOTING";
+	canvas->Children->Clear();
+
+	RuntimeComponent::HelperClass cl;
+	cl.RebootComputer();
 }

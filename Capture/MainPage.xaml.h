@@ -37,6 +37,10 @@ namespace SoundCapture
 		void Tick(Object^ sender, Object^ e);
 
 		void ResetEngine(uint16 counter);
+		void Reboot();
+
+		void ShutdownComputer();
+		void RebootComputer();
 
 	private:
 		UINT64 m_sampleCount;

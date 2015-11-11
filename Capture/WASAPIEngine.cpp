@@ -65,7 +65,7 @@ IAsyncAction^ WASAPIEngine::InitializeAsync(UIHandler^ func)
 		})
 		.then([this, func]()
 		{
-			if (m_deviceList.size() > 0)
+			if (m_deviceList.size() > 1) // 
 			{
 				m_collector = ref new DataCollector(m_deviceList.size());
 				for (size_t i = 0; i < m_deviceList.size(); i++)

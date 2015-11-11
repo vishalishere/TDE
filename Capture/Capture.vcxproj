@@ -227,6 +227,11 @@
     <ClCompile Include="WASAPIDevice.cpp" />
     <ClCompile Include="WASAPIEngine.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RuntimeComponent\RuntimeComponent.csproj">
+      <Project>{e11de85b-f1b9-4140-bd9a-b0de9a97603b}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
