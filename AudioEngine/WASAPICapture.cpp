@@ -13,11 +13,12 @@
 //
 
 #include "pch.h"
+#include "Common.h"
 #include "WASAPICapture.h"
 
 using namespace Windows::Storage;
 using namespace Windows::System::Threading;
-using namespace Wasapi;
+using namespace AudioEngine;
 using namespace Platform;
 
 #define BITS_PER_BYTE 8
@@ -27,14 +28,11 @@ using namespace Platform;
 //
 WASAPICapture::WASAPICapture() :
     m_BufferFrames( 0 ),
-    m_cbDataSize( 0 ),
     m_dwQueueID( 0 ),
-	m_counter(0),
     m_DeviceStateChanged( nullptr ),
     m_AudioClient( nullptr ),
     m_AudioCaptureClient( nullptr ),
-    m_SampleReadyAsyncResult( nullptr ),
-    m_fWriting( false )
+    m_SampleReadyAsyncResult( nullptr )
 {
     // Create events for sample ready or user stop
     m_SampleReadyEvent = CreateEventEx( nullptr, nullptr, 0, EVENT_ALL_ACCESS );
@@ -270,6 +268,7 @@ HRESULT WASAPICapture::ActivateCompleted(IActivateAudioInterfaceAsyncOperation *
 exit:
     if (FAILED( hr ))
     {
+		m_streams->DeviceError(m_CaptureDeviceID);
         m_DeviceStateChanged->SetState( DeviceState::DeviceStateInError, hr, true );
         SAFE_RELEASE( m_AudioClient );
         SAFE_RELEASE( m_AudioCaptureClient );
@@ -402,7 +401,7 @@ HRESULT WASAPICapture::OnSampleReady(IMFAsyncResult* pResult)
 {
     HRESULT hr = S_OK;
 
-    hr = OnAudioSampleRequested( false );
+    hr = OnAudioSampleRequested();
 
     if (SUCCEEDED( hr ))
     {
@@ -415,8 +414,9 @@ HRESULT WASAPICapture::OnSampleReady(IMFAsyncResult* pResult)
     else
     {
         m_DeviceStateChanged->SetState( DeviceState::DeviceStateInError, hr, true );
+		m_streams->DeviceError(m_CaptureDeviceID);
     }
-    
+
     return hr;
 }
 
@@ -425,7 +425,7 @@ HRESULT WASAPICapture::OnSampleReady(IMFAsyncResult* pResult)
 //
 //  Called when audio device fires m_SampleReadyEvent
 //
-HRESULT WASAPICapture::OnAudioSampleRequested(Platform::Boolean IsSilence)
+HRESULT WASAPICapture::OnAudioSampleRequested()
 {
     HRESULT hr = S_OK;
     UINT32 FramesAvailable = 0;
@@ -436,12 +436,6 @@ HRESULT WASAPICapture::OnAudioSampleRequested(Platform::Boolean IsSilence)
     DWORD cbBytesToCapture = 0;
 
     EnterCriticalSection( &m_CritSec );
-
-	if (m_DeviceStateChanged->GetState() == DeviceState::DeviceStateInError)
-	{
-		m_streams->DeviceError(m_CaptureDeviceID);
-		goto exit;
-	}
 
     // If this flag is set, we have already queued up the async call to finialize the WAV header
     // So we don't want to grab or write any more data that would possibly give us an invalid size
@@ -479,14 +473,7 @@ HRESULT WASAPICapture::OnAudioSampleRequested(Platform::Boolean IsSilence)
     )
     {
         cbBytesToCapture = FramesAvailable * m_MixFormat->nBlockAlign;
-        
-        // WAV files have a 4GB (0xFFFFFFFF) size limit, so likely we have hit that limit when we
-        // overflow here.  Time to stop the capture
-        if ( (m_cbDataSize + cbBytesToCapture) < m_cbDataSize )
-        {
-            StopCaptureAsync();
-            goto exit;
-        }
+		bool discontinuity = false;
 
         // Get sample buffer
         hr = m_AudioCaptureClient->GetBuffer( &Data, &FramesAvailable, &dwCaptureFlags, &u64DevicePosition, &u64QPCPosition );
@@ -494,36 +481,22 @@ HRESULT WASAPICapture::OnAudioSampleRequested(Platform::Boolean IsSilence)
         {
             goto exit;
         }
-		/*
-        if (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY)
-        {
-            // Pass down a discontinuity flag in case the app is interested and reset back to capturing
-            m_DeviceStateChanged->SetState( DeviceState::DeviceStateDiscontinuity, S_OK, true );
-            m_DeviceStateChanged->SetState( DeviceState::DeviceStateCapturing, S_OK, false );
-        }
-		*/
+
 		if (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR)
 		{
-			String^ str = String::Concat(m_DeviceIdString, "-TIMESTAMP_ERROR\n");
-			OutputDebugString(str->Data());
+			discontinuity = true;
 		}
-		
-        // Zero out sample if silence
-        if ( (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_SILENT) || IsSilence )
-        {
-            memset( Data, 0, FramesAvailable * m_MixFormat->nBlockAlign );
-        }
+
+		if (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY)
+		{
+			discontinuity = true;
+		}
 
 		// HANDLE AUDIO DATA
-		m_streams->AddData(m_CaptureDeviceID, Data, cbBytesToCapture, u64QPCPosition, (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0, (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_SILENT) != 0);
+		m_streams->AddData(m_CaptureDeviceID, Data, cbBytesToCapture, u64QPCPosition, discontinuity, (dwCaptureFlags & AUDCLNT_BUFFERFLAGS_SILENT) != 0);
 
         // Release buffer back
         m_AudioCaptureClient->ReleaseBuffer( FramesAvailable );
-
-        // Increase the size of our 'data' chunk and flush counter.  m_cbDataSize needs to be accurate
-        // Its OK if m_cbFlushCounter is an approximation
-        m_cbDataSize += cbBytesToCapture;
-		m_counter += cbBytesToCapture;
     }
 
 exit:

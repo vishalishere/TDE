@@ -9,7 +9,7 @@ using namespace Windows::Media::Devices;
 using namespace Windows::Devices::Enumeration;
 using namespace Platform::Collections;
 
-namespace Wasapi
+namespace AudioEngine
 {
 	ref class WASAPIDevice sealed
 	{
@@ -26,7 +26,6 @@ namespace Wasapi
 	internal:
 		property ComPtr<WASAPICapture>		Capture;
 		property DeviceStateChangedEvent^   StateChangedEvent;
-		property EventRegistrationToken		DeviceStateChangeToken;
-		
+		property EventRegistrationToken		DeviceStateChangeToken;		
 	};
 };

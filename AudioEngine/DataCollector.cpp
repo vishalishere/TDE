@@ -1,10 +1,11 @@
 #include "pch.h"
+#include "Common.h"
 #include "DataCollector.h"
 
 using namespace Windows::Storage;
 using namespace Windows::System::Threading;
 using namespace Platform;
-using namespace Wasapi;
+using namespace AudioEngine;
 
 DataCollector::DataCollector(size_t nDevices) : m_numberOfDevices(nDevices), m_store(true), m_error(false)
 {

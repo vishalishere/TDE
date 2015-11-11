@@ -6,9 +6,7 @@
 #pragma once
 
 #include "MainPage.g.h"
-#include "WASAPIEngine.h"
 
-using namespace Wasapi;
 using namespace Windows::UI::Xaml;
 using namespace Windows::UI::Xaml::Media;
 
@@ -26,7 +24,7 @@ namespace SoundCapture
 		MainPage();
 
 	private:
-		WASAPIEngine^ m_wasapiEngine;
+		AudioEngine::WASAPIEngine^ m_wasapiEngine;
 
 		void Start();
 		void Direction(double rate, double dist, int delay, int x, int length, SolidColorBrush^ color, int thickness);

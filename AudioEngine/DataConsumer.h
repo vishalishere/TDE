@@ -10,11 +10,11 @@ using namespace Platform;
 using namespace Windows::Foundation;
 using namespace Windows::Storage;
 
-namespace Wasapi
+namespace AudioEngine
 {
 	static Windows::Foundation::IAsyncAction^ WorkItem = nullptr;
 
-	enum class HeartBeatType
+	public enum class HeartBeatType
 	{
 		DATA,
 		BUFFERING,
@@ -24,12 +24,12 @@ namespace Wasapi
 		NODEVICE
 	};
 
-	public delegate void UIHandler(uint32, int, int, int, int, int, UINT64, UINT64, uint32);
+	public delegate void UIDelegate(uint32, int, int, int, int, int, UINT64, UINT64, uint32);
 
 	ref class DataConsumer sealed
 	{
 	public:
-		DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^ func);
+		DataConsumer(size_t nDevices, DataCollector^ collector, UIDelegate^ func);
 
 		void Start();
 		void Stop();
@@ -75,7 +75,7 @@ namespace Wasapi
 
 		std::vector<std::vector<std::vector<TimeDelayEstimation::AudioDataItem>>> m_buffer;	
 
-		UIHandler^ m_uiHandler;
+		UIDelegate^ m_uiHandler;
 
 		uint32 m_counter;
 		ULONGLONG m_tick;

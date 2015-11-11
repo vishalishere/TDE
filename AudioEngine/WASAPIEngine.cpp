@@ -15,7 +15,7 @@ WASAPIEngine::~WASAPIEngine()
 {
 }
 
-IAsyncAction^ WASAPIEngine::InitializeAsync(UIHandler^ func)
+IAsyncAction^ WASAPIEngine::InitializeAsync(UIDelegate^ func)
 {
 	return create_async([this ,func]
 	{
@@ -75,7 +75,7 @@ IAsyncAction^ WASAPIEngine::InitializeAsync(UIHandler^ func)
 				m_consumer = ref new DataConsumer(m_deviceList.size(), m_collector, func);
 				m_consumer->Start();
 			}
-			else func(0, int(Wasapi::HeartBeatType::NODEVICE),0,0,0,0,0,0,0);
+			else func(0, int(AudioEngine::HeartBeatType::NODEVICE),0,0,0,0,0,0,0);
 		});
 	});
 }
@@ -86,7 +86,7 @@ void WASAPIEngine::Finish()
 	{
 		for (size_t i = 0; i < m_deviceList.size(); i++)
 		{
-			m_deviceList[i]->Capture->FinishCaptureAsync();
+			m_deviceList[i]->Capture->StopCaptureAsync();
 			m_deviceList[i] = nullptr;
 		}
 		m_consumer->Finish();
@@ -94,5 +94,4 @@ void WASAPIEngine::Finish()
 		m_collector->Finish();
 		m_collector = nullptr;
 	}
-	return;
 }

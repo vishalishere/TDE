@@ -17,6 +17,7 @@
 #include <mfapi.h>
 #include <AudioClient.h>
 #include <mmdeviceapi.h>
+#include "Common.h"
 #include "DeviceState.h"
 #include "DataCollector.h"
 
@@ -26,7 +27,7 @@ using namespace Windows::Media::Devices;
 using namespace Windows::Storage::Streams;
 
 #pragma once
-namespace Wasapi
+namespace AudioEngine
 {
     // Primary WASAPI Capture Class
     class WASAPICapture :
@@ -59,7 +60,7 @@ namespace Wasapi
         HRESULT OnSampleReady( IMFAsyncResult* pResult );
         HRESULT OnSendScopeData( IMFAsyncResult* pResult );
 
-        HRESULT OnAudioSampleRequested( Platform::Boolean IsSilence = false );
+        HRESULT OnAudioSampleRequested();
         
     private:
         Platform::String^			m_DeviceIdString;
@@ -69,9 +70,6 @@ namespace Wasapi
 		CRITICAL_SECTION			m_CritSec;
         DWORD						m_dwQueueID;
 
-        DWORD						m_cbDataSize;
-        BOOL						m_fWriting;
-		DWORD						m_counter;
 		WAVEFORMATEX				*m_MixFormat;
 
         IAudioClient3				*m_AudioClient;
@@ -84,7 +82,6 @@ namespace Wasapi
 
         DeviceStateChangedEvent^	m_DeviceStateChanged;
 
-		int StartCounter = 0;
 		size_t m_CaptureDeviceID;
 		DataCollector^ m_streams;
     };

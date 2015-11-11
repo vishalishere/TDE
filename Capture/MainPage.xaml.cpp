@@ -5,11 +5,8 @@
 
 #include "pch.h"
 #include "MainPage.xaml.h"
-#include "DataCollector.h"
-#include "DataConsumer.h"
 
 using namespace SoundCapture;
-using namespace Wasapi;
 
 using namespace Platform;
 using namespace Windows::Foundation;
@@ -59,33 +56,33 @@ void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int 
 
 void SoundCapture::MainPage::Start()
 {
-	Wasapi::UIHandler^ uiHandler = ref new Wasapi::UIHandler([this](uint32 i0, int i1, int i2, int i3, int i4, int i5, UINT64 i6, UINT64 i7, uint32 i8)
+	AudioEngine::UIDelegate^ uiHandler = ref new AudioEngine::UIDelegate([this](uint32 i0, int i1, int i2, int i3, int i4, int i5, UINT64 i6, UINT64 i7, uint32 i8)
 	{
 		auto uiDelegate = [this, i0, i1, i2, i3, i4, i5, i6, i7, i8]()
 		{
 			text1->Text = i0.ToString();
-			switch ((HeartBeatType)i1)
+			switch ((AudioEngine::HeartBeatType)i1)
 			{
-			case HeartBeatType::DATA:
+			case AudioEngine::HeartBeatType::DATA:
 				text2->Text = "DATA"; 
 				m_bufferingCount = 0;
 				break;
-			case HeartBeatType::INVALID: 
+			case AudioEngine::HeartBeatType::INVALID:
 				text2->Text = "INVALID"; 
 				break;
-			case HeartBeatType::SILENCE:
+			case AudioEngine::HeartBeatType::SILENCE:
 				text2->Text = "SILENCE"; 
 				m_bufferingCount = 0;
 				break;
-			case HeartBeatType::BUFFERING: 
+			case AudioEngine::HeartBeatType::BUFFERING:
 				text2->Text = "BUFFERING"; 
 				m_bufferingCount++;
 				break;
-			case HeartBeatType::DEVICE_ERROR: 
+			case AudioEngine::HeartBeatType::DEVICE_ERROR:
 				text2->Text = "ERROR"; 
 				ResetEngine(10);
 				break;
-			case HeartBeatType::NODEVICE:
+			case AudioEngine::HeartBeatType::NODEVICE:
 				text2->Text = "NO DEVICES";
 				Reboot();
 				break;
@@ -100,7 +97,7 @@ void SoundCapture::MainPage::Start()
 			text7->Text = i6.ToString();
 			text8->Text = i7.ToString();
 
-			if ((HeartBeatType)i1 == HeartBeatType::BUFFERING)
+			if ((AudioEngine::HeartBeatType)i1 == AudioEngine::HeartBeatType::BUFFERING)
 			{
 				label1->Text = "TIME STAMP 0";
 				label2->Text = "TIME STAMP 1";
@@ -111,12 +108,12 @@ void SoundCapture::MainPage::Start()
 				label2->Text = "VOLUME";
 			}
 
-			if ((HeartBeatType)i1 != HeartBeatType::BUFFERING)
+			if ((AudioEngine::HeartBeatType)i1 != AudioEngine::HeartBeatType::BUFFERING)
 			{
 				canvas->Children->Clear();
 			}
 
-			if ((HeartBeatType)i1 == HeartBeatType::DATA)
+			if ((AudioEngine::HeartBeatType)i1 == AudioEngine::HeartBeatType::DATA)
 			{
 				UINT64 vol = i6 / 20;
 				if (vol > 800) vol = 800;
@@ -151,7 +148,7 @@ void SoundCapture::MainPage::Tick(Object^ sender, Object^ e)
 	{
 		text2->Text = "STARTED";
 		m_timer->Stop();
-		m_wasapiEngine = ref new WASAPIEngine();
+		m_wasapiEngine = ref new AudioEngine::WASAPIEngine();
 		Start();
 	}
 	else

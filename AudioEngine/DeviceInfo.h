@@ -1,7 +1,7 @@
 #pragma once
 #include <Windows.h>
 
-namespace Wasapi
+namespace AudioEngine
 {
 	class DeviceInfo
 	{

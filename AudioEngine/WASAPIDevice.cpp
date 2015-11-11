@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "WASAPIDevice.h"
 
-using namespace Wasapi;
+using namespace AudioEngine;
 
 WASAPIDevice::WASAPIDevice()
 {

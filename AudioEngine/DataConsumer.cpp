@@ -7,7 +7,7 @@
 using namespace Windows::Storage;
 using namespace Windows::System::Threading;
 using namespace Platform;
-using namespace Wasapi;
+using namespace AudioEngine;
 
 using namespace concurrency;
 
@@ -20,7 +20,7 @@ using namespace concurrency;
 #define STORE_SAMPLE 0
 #define SAMPLE_FILE "SAMPLE.TXT"
 
-DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIHandler^ func) :
+DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIDelegate^ func) :
 	m_numberOfDevices(nDevices),
 	m_collector(collector),
 	m_uiHandler(func),

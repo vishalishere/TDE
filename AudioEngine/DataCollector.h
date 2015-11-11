@@ -6,7 +6,7 @@
 #include "DeviceInfo.h"
 #include "AudioDataPacket.h"
 
-namespace Wasapi
+namespace AudioEngine
 {
 	ref class DataCollector sealed
 	{
