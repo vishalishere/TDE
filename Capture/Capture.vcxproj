@@ -166,11 +166,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Common.h" />
-    <ClInclude Include="DataConsumer.h" />
-    <ClInclude Include="DeviceInfo.h" />
-    <ClInclude Include="DeviceState.h" />
-    <ClInclude Include="AudioDataPacket.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h">
       <DependentUpon>App.xaml</DependentUpon>
@@ -178,10 +173,6 @@
     <ClInclude Include="MainPage.xaml.h">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </ClInclude>
-    <ClInclude Include="DataCollector.h" />
-    <ClInclude Include="WASAPICapture.h" />
-    <ClInclude Include="WASAPIDevice.h" />
-    <ClInclude Include="WASAPIEngine.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
@@ -210,7 +201,6 @@
     <ClCompile Include="App.xaml.cpp">
       <DependentUpon>App.xaml</DependentUpon>
     </ClCompile>
-    <ClCompile Include="DataConsumer.cpp" />
     <ClCompile Include="MainPage.xaml.cpp">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </ClCompile>
@@ -222,10 +212,14 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="DataCollector.cpp" />
-    <ClCompile Include="WASAPICapture.cpp" />
-    <ClCompile Include="WASAPIDevice.cpp" />
-    <ClCompile Include="WASAPIEngine.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AudioEngine\AudioEngine.vcxproj">
+      <Project>{6d016b27-6145-474b-b8f1-55741ca0eee7}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\RuntimeComponent\RuntimeComponent.csproj">
+      <Project>{e11de85b-f1b9-4140-bd9a-b0de9a97603b}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
