@@ -1,10 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" IgnorableNamespaces="uap mp">
-  <Identity Name="7be85b63-a774-4825-a174-e90e1a82d89c" Publisher="CN=ebragge" Version="1.0.0.0" />
-  <mp:PhoneIdentity PhoneProductId="7be85b63-a774-4825-a174-e90e1a82d89c" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+  <Identity Name="7c61446a-1353-458e-a1bb-24a5c015a9a6" Publisher="CN=ebragge" Version="1.0.0.0" />
+  <mp:PhoneIdentity PhoneProductId="7c61446a-1353-458e-a1bb-24a5c015a9a6" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
-    <DisplayName>UI_App</DisplayName>
-    <PublisherDisplayName>ebragge</PublisherDisplayName>
+    <DisplayName>SDE</DisplayName>
+    <PublisherDisplayName>juhanak</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   <Dependencies>
@@ -14,8 +14,8 @@
     <Resource Language="x-generate" />
   </Resources>
   <Applications>
-    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="UI_App.App">
-      <uap:VisualElements DisplayName="UI_App" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="UI_App" BackgroundColor="transparent">
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="UI_CPP.App">
+      <uap:VisualElements DisplayName="SSL" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="Sound direction estimation" BackgroundColor="transparent">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png">
         </uap:DefaultTile>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
@@ -26,5 +26,6 @@
     <Capability Name="internetClient" />
     <uap:Capability Name="musicLibrary" />
     <DeviceCapability Name="microphone" />
+    <DeviceCapability Name="webcam" />
   </Capabilities>
 </Package>

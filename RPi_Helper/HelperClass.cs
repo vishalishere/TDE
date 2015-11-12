@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using System.Net;
 using Windows.Data.Json;
 
-namespace RuntimeComponent
+namespace RPi_Helper
 {
     public sealed class HelperClass
     {

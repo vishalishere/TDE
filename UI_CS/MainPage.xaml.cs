@@ -7,7 +7,7 @@ using Windows.UI.Xaml.Media;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
-namespace UI_App
+namespace UI_CS
 {
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
@@ -144,7 +144,7 @@ namespace UI_App
             engine.Finish();
             engine = null;
             EmptyTexts("REBOOTING");
-            RuntimeComponent.HelperClass hc = new RuntimeComponent.HelperClass();
+            RPi_Helper.HelperClass hc = new RPi_Helper.HelperClass();
             hc.RebootComputer();
         }
 

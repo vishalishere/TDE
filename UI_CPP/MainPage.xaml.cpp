@@ -6,7 +6,7 @@
 #include "pch.h"
 #include "MainPage.xaml.h"
 
-using namespace SoundCapture;
+using namespace UI_CPP;
 
 using namespace Platform;
 using namespace Windows::Foundation;
@@ -24,7 +24,7 @@ using namespace Windows::ApplicationModel::Activation;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
-MainPage::MainPage() : m_sampleCount(0), m_startCounter(10), m_bufferingCount(0)
+UI_CPP::MainPage::MainPage() : m_sampleCount(0), m_startCounter(10), m_bufferingCount(0)
 {
 	InitializeComponent();
 
@@ -39,7 +39,7 @@ MainPage::MainPage() : m_sampleCount(0), m_startCounter(10), m_bufferingCount(0)
 	m_timer->Start();
 }
 
-void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int x, int length, SolidColorBrush^ color, int thickness) {
+void UI_CPP::MainPage::Direction(double rate, double dist, int delay, int x, int length, SolidColorBrush^ color, int thickness) {
 	double val = (((double)delay / rate) * 343.0) / dist;
 	if (val > 1) val = 1;
 	if (val < -1) val = -1;
@@ -54,7 +54,7 @@ void SoundCapture::MainPage::Direction(double rate, double dist, int delay, int 
 	canvas->Children->Append(line);
 }
 
-void SoundCapture::MainPage::Start()
+void UI_CPP::MainPage::Start()
 {
 	AudioEngine::UIDelegate^ uiHandler = ref new AudioEngine::UIDelegate([this](uint32 i0, int i1, int i2, int i3, int i4, int i5, UINT64 i6, UINT64 i7, uint32 i8)
 	{
@@ -131,18 +131,18 @@ void SoundCapture::MainPage::Start()
 	m_wasapiEngine->InitializeAsync(uiHandler);
 }
 
-void SoundCapture::MainPage::App_Resuming(Object^ sender, Object^ e)
+void UI_CPP::MainPage::App_Resuming(Object^ sender, Object^ e)
 {
 	ResetEngine(10);
 }
 
-void SoundCapture::MainPage::App_Suspending(Object^ sender, SuspendingEventArgs^ e)
+void UI_CPP::MainPage::App_Suspending(Object^ sender, SuspendingEventArgs^ e)
 {
 	m_wasapiEngine->Finish();
 	m_wasapiEngine = nullptr;
 }
 
-void SoundCapture::MainPage::Tick(Object^ sender, Object^ e)
+void UI_CPP::MainPage::Tick(Object^ sender, Object^ e)
 {
 	if (m_startCounter == 0)
 	{
@@ -158,7 +158,7 @@ void SoundCapture::MainPage::Tick(Object^ sender, Object^ e)
 	}
 }
 
-void SoundCapture::MainPage::ResetEngine(uint16 counter)
+void UI_CPP::MainPage::ResetEngine(uint16 counter)
 {
 	m_startCounter = 0;
 	m_wasapiEngine->Finish();
@@ -178,7 +178,7 @@ void SoundCapture::MainPage::ResetEngine(uint16 counter)
 	m_timer->Start();
 }
 
-void SoundCapture::MainPage::Reboot()
+void UI_CPP::MainPage::Reboot()
 {
 	m_wasapiEngine->Finish();
 	m_wasapiEngine = nullptr;
@@ -194,6 +194,6 @@ void SoundCapture::MainPage::Reboot()
 	text2->Text = "REBOOTING";
 	canvas->Children->Clear();
 
-	RuntimeComponent::HelperClass cl;
+	RPi_Helper::HelperClass cl;
 	cl.RebootComputer();
 }

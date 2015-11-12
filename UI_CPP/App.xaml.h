@@ -7,7 +7,7 @@
 
 #include "App.g.h"
 
-namespace SoundCapture
+namespace UI_CPP
 {
 	/// <summary>
 	/// Provides application-specific behavior to supplement the default Application class.

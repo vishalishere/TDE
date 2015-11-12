@@ -6,7 +6,7 @@
 #include "pch.h"
 #include "MainPage.xaml.h"
 
-using namespace SoundCapture;
+using namespace UI_CPP;
 
 using namespace Platform;
 using namespace Windows::ApplicationModel;

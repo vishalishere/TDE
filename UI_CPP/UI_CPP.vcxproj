@@ -98,7 +98,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <PackageCertificateKeyFile>Capture_TemporaryKey.pfx</PackageCertificateKeyFile>
+    <PackageCertificateKeyFile>UI_CPP_TemporaryKey.pfx</PackageCertificateKeyFile>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
@@ -186,7 +186,7 @@
     <AppxManifest Include="Package.appxmanifest">
       <SubType>Designer</SubType>
     </AppxManifest>
-    <None Include="Capture_TemporaryKey.pfx" />
+    <None Include="UI_CPP_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\LockScreenLogo.scale-200.png" />
@@ -217,7 +217,7 @@
     <ProjectReference Include="..\AudioEngine\AudioEngine.vcxproj">
       <Project>{6d016b27-6145-474b-b8f1-55741ca0eee7}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\RuntimeComponent\RuntimeComponent.csproj">
+    <ProjectReference Include="..\RPi_Helper\RPi_Helper.csproj">
       <Project>{e11de85b-f1b9-4140-bd9a-b0de9a97603b}</Project>
     </ProjectReference>
   </ItemGroup>

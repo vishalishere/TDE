@@ -13,7 +13,7 @@ using namespace Windows::UI::Xaml::Media;
 using namespace Windows::ApplicationModel;
 using namespace Windows::ApplicationModel::Activation;
 
-namespace SoundCapture
+namespace UI_CPP
 {
 	/// <summary>
 	/// An empty page that can be used on its own or navigated to within a Frame.

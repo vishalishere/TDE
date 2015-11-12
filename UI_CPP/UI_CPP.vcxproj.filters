@@ -46,9 +46,9 @@
     <AppxManifest Include="Package.appxmanifest" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Capture_TemporaryKey.pfx" />
+    <Page Include="MainPage.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="MainPage.xaml" />
+    <None Include="UI_CPP_TemporaryKey.pfx" />
   </ItemGroup>
 </Project>
