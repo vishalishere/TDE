@@ -8,19 +8,9 @@ using namespace Windows::Storage;
 using namespace Windows::System::Threading;
 using namespace Platform;
 using namespace AudioEngine;
-
 using namespace concurrency;
 
-#define MIN_AUDIO_THRESHOLD 500
-#define MAX_AUDIO_THRESHOLD	32000
-#define BUFFER_SIZE 44100
-#define DELAY_WINDOW_SIZE 50
-#define TDE_WINDOW 300
-#define START_OFFSET -60
-#define STORE_SAMPLE 0
-#define SAMPLE_FILE "SAMPLE.TXT"
-
-DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIDelegate^ func) :
+DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIDelegate^ func, TDEParameters^ parameters) :
 	m_numberOfDevices(nDevices),
 	m_collector(collector),
 	m_uiHandler(func),
@@ -29,12 +19,7 @@ DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIDelegate
 	m_packetCounter(0),
 	m_discontinuityCounter(0),
 	m_dataRemovalCounter(0),
-	m_minAudioThreshold(MIN_AUDIO_THRESHOLD),
-	m_maxAudioThreshold(MAX_AUDIO_THRESHOLD),
-	m_delayWindow(DELAY_WINDOW_SIZE),
-	m_bufferSize(BUFFER_SIZE),
-	m_tdeWindow(TDE_WINDOW),
-	m_storeSample(STORE_SAMPLE)
+	m_params(parameters)
 {
 	m_devices = std::vector<DeviceInfo>(m_numberOfDevices);
 	m_audioDataFirst = std::vector<AudioDataPacket*>(m_numberOfDevices, NULL);
@@ -219,7 +204,7 @@ bool DataConsumer::ProcessData()
 		}
 	}
 
-	if (smallestBuffer > m_bufferSize)
+	if (smallestBuffer > m_params->BufferSize())
 	{
 		m_collector->StoreData(false);
 		UINT64 latestBegin = m_buffer[0][0][0].timestamp;
@@ -234,7 +219,7 @@ bool DataConsumer::ProcessData()
 
 		bool sample = false;
 		size_t pos = 0, sample_pos = 0;
-		uint32 threshold = m_minAudioThreshold;
+		uint32 threshold = m_params->MinAudioThreshold();
 
 		while (1) 
 		{ 
@@ -248,14 +233,14 @@ bool DataConsumer::ProcessData()
 			{
 				sample_pos = pos;
 				sample = true;
-				if (threshold >= m_maxAudioThreshold) break;
+				if (threshold >= m_params->MaxAudioThreshold()) break;
 				threshold *= 2;	
 			}
 			pos++;
 		}
 		if (sample)
 		{
-			if (!CalculateTDE(min(smallestBuffer-(m_delayWindow+m_tdeWindow),max(m_delayWindow,sample_pos + START_OFFSET)), threshold))
+			if (!CalculateTDE(min(smallestBuffer-(m_params->DelayWindow()+m_params->TDEWindow()),max(m_params->DelayWindow(),sample_pos + m_params->StartOffset())), threshold))
 			{
 				HeartBeat(HeartBeatType::INVALID);
 			}
@@ -343,7 +328,9 @@ void DataConsumer::AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT
 
 bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 {
-	TimeDelayEstimation::SignalData data = TimeDelayEstimation::SignalData(&m_buffer[0][0], &m_buffer[1][0], pos, pos + m_tdeWindow, false);
+	TimeDelayEstimation::SignalData data = TimeDelayEstimation::SignalData(&m_buffer[m_params->Device0()][m_params->Channel0()], 
+																		   &m_buffer[m_params->Device1()][m_params->Channel1()], 
+		pos, pos + m_params->TDEWindow(), false);
 	TimeDelayEstimation::DelayType align0, align1;
 
 	if (!data.CalculateAlignment(data.First(), &align0, NULL)) return false;
@@ -358,7 +345,7 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 	TimeDelayEstimation::DelayType align = (align0 + align1) / 2;
 	data.SetAlignment(align);
 
-	TimeDelayEstimation::TDE tde(m_delayWindow, data);
+	TimeDelayEstimation::TDE tde(m_params->DelayWindow(), data);
 
 	int delay1 = tde.FindDelay(TimeDelayEstimation::Algoritm::CC);
 	int delay2 = tde.FindDelay(TimeDelayEstimation::Algoritm::ASDF);
@@ -366,12 +353,11 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 
 	m_uiHandler(m_counter++, (int)HeartBeatType::DATA, delay1, delay2, delay3, (int)align, threshold, volume, m_devices[0].GetSamplesPerSec());
 	
-	if (m_storeSample)
+	if (m_params->StoreSample())
 	{
-		Platform::String^ s1 = SAMPLE_FILE;
-		Platform::String^ s2 = "POS: " + pos.ToString() + " THRESHOLD: " + threshold.ToString() + " ALIGN: " + align.ToString() + 
+		Platform::String^ str = "POS: " + pos.ToString() + " THRESHOLD: " + threshold.ToString() + " ALIGN: " + align.ToString() + 
 			" CC: " + delay1.ToString() + " ASDF: " + delay2.ToString() + " PEAK: " + delay3.ToString() + "\r\n";
-		for (size_t i = data.First() - m_delayWindow; i <= data.Last() + m_delayWindow; i++)
+		for (size_t i = data.First() - m_params->DelayWindow(); i <= data.Last() + m_params->DelayWindow(); i++)
 		{
 			TimeDelayEstimation::AudioDataItem item0, item1;
 			data.DataItem0(i, &item0);
@@ -379,18 +365,18 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 
 			Platform::String^ s = item0.timestamp.ToString() + "\t" + item0.value.ToString() + "\t" +
 								  item1.timestamp.ToString() + "\t" + item1.value.ToString() + "\r\n";
-			s2 = Platform::String::Concat(s2, s);
+			str = Platform::String::Concat(str, s);
 		}
-		StoreData(s1, s2);
+		StoreData(str);
 	}
 	
 	return true;
 }
 
-void DataConsumer::StoreData(String^ fileName, String^ data) 
+void DataConsumer::StoreData(String^ data) 
 {
 	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
-	auto createFileTask = create_task(localFolder->CreateFileAsync(fileName, Windows::Storage::CreationCollisionOption::GenerateUniqueName));
+	auto createFileTask = create_task(localFolder->CreateFileAsync(m_params->SampleFile(), Windows::Storage::CreationCollisionOption::GenerateUniqueName));
 	createFileTask.then([data](StorageFile^ newFile) 
 	{
 		create_task(FileIO::AppendTextAsync(newFile, data));

@@ -15,6 +15,7 @@ namespace UI_CS
     public sealed partial class MainPage : Page
     {
         private AudioEngine.WASAPIEngine engine;
+        private IoTHubLibrary.IotHubClient client;
         private DispatcherTimer timer;
         private uint bufferingCount;
         private uint startCounter = 10;
@@ -23,7 +24,9 @@ namespace UI_CS
         public MainPage()
         {
             this.InitializeComponent();
-            
+
+            client = new IoTHubLibrary.IotHubClient();
+
             TimeSpan ts = new TimeSpan(10000000);
             timer = new DispatcherTimer();
             timer.Interval = ts;
@@ -38,7 +41,7 @@ namespace UI_CS
             engine.Finish();
         }
 
-        private void UpdateUI(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
+        async private void UpdateUI(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
         {
             text2.Text = i0.ToString();
             SetLabels((AudioEngine.HeartBeatType)i1);
@@ -94,6 +97,7 @@ namespace UI_CS
                 Direction(i8, 0.4, -1 * i4, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Blue), 1);
                 sampleCount++;
                 text9.Text = sampleCount.ToString();
+                await client.SendDeviceToCloudMessagesAsync((double)i2, (double)vol);
             }
         }
 
@@ -121,7 +125,8 @@ namespace UI_CS
                 text1.Text = "STARTED";
                 timer.Stop();
                 engine = new AudioEngine.WASAPIEngine();
-                await engine.InitializeAsync(ThreadDelegate);
+                AudioEngine.TDEParameters param = new AudioEngine.TDEParameters(1, 0, 0, 0, 3);
+                await engine.InitializeAsync(ThreadDelegate, param);
             }
             else
             {

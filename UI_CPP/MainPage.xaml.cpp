@@ -128,7 +128,8 @@ void UI_CPP::MainPage::Start()
 		auto handler = ref new Windows::UI::Core::DispatchedHandler(uiDelegate);
 		Dispatcher->RunAsync(Windows::UI::Core::CoreDispatcherPriority::Normal, handler);
 	});
-	m_wasapiEngine->InitializeAsync(uiHandler);
+	AudioEngine::TDEParameters^ params = ref new AudioEngine::TDEParameters();
+	m_wasapiEngine->InitializeAsync(uiHandler, params);
 }
 
 void UI_CPP::MainPage::App_Resuming(Object^ sender, Object^ e)

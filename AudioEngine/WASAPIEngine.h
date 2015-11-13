@@ -22,7 +22,7 @@ namespace AudioEngine
 	public:
 		WASAPIEngine();
 		virtual ~WASAPIEngine();
-		IAsyncAction^ InitializeAsync(UIDelegate^ func);
+		IAsyncAction^ InitializeAsync(UIDelegate^ func, TDEParameters^ params);
 		void Finish();
 		
 	private:

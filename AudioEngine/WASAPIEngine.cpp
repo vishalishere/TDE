@@ -15,9 +15,9 @@ WASAPIEngine::~WASAPIEngine()
 {
 }
 
-IAsyncAction^ WASAPIEngine::InitializeAsync(UIDelegate^ func)
+IAsyncAction^ WASAPIEngine::InitializeAsync(UIDelegate^ func, TDEParameters^ params)
 {
-	return create_async([this ,func]
+	return create_async([this ,func, params]
 	{
 		// Get the string identifier of the audio renderer
 		String^ AudioSelector = MediaDevice::GetAudioCaptureSelector();
@@ -63,16 +63,16 @@ IAsyncAction^ WASAPIEngine::InitializeAsync(UIDelegate^ func)
 				}
 			}
 		})
-		.then([this, func]()
+		.then([this, func, params]()
 		{
-			if (m_deviceList.size() > 1) // 
+			if (m_deviceList.size() >= params->MinDevices()) 
 			{
 				m_collector = ref new DataCollector(m_deviceList.size());
 				for (size_t i = 0; i < m_deviceList.size(); i++)
 				{
 					m_deviceList[i]->InitCaptureDevice(i, m_collector);
 				}
-				m_consumer = ref new DataConsumer(m_deviceList.size(), m_collector, func);
+				m_consumer = ref new DataConsumer(m_deviceList.size(), m_collector, func, params);
 				m_consumer->Start();
 			}
 			else func(0, int(AudioEngine::HeartBeatType::NODEVICE),0,0,0,0,0,0,0);

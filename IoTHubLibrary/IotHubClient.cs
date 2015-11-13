@@ -1,21 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Client;
 using Newtonsoft.Json;
-using System.Threading;
 using Windows.Foundation;
 
 namespace IoTHubLibrary
 {
     public sealed class IotHubClient
     {
-
         static DeviceClient _deviceClient;
-        static string iotHubUri = "skynet1.azure-devices.net";
-        static string deviceKey = "qj8Hjeyc/0wpQk3ffCVgqOEBA9xThsWYnWshOxibyGE=";
+        static string iotHubUri = "AudioTestHub.azure-devices.net";
+        static string deviceKey ="ePeF5AXJRqDCoWXBniAXJh4TInVDy8s+59JRQIBRPFw=";
 
         public IotHubClient()
         {
@@ -23,34 +19,28 @@ namespace IoTHubLibrary
             _deviceClient = DeviceClient.Create(iotHubUri, auth, TransportType.Http1);
         }
 
-        public IAsyncAction SendDeviceToCloudMessagesAsync(double direction, double power)
+        public IAsyncAction SendDeviceToCloudMessagesAsync(int direction, System.UInt64 volume)
         {
             Func<Task> action = async () =>
             {
-                await SendDeviceToCloudMessagesInternalAsync(direction, power);
+                await SendDeviceToCloudMessagesInternalAsync(direction, volume);
             };
-
             return action().AsAsyncAction();
         }
 
-        private static async Task SendDeviceToCloudMessagesInternalAsync(double direction, double power)
+        private static async Task SendDeviceToCloudMessagesInternalAsync(int direction, System.UInt64 volume)
         {
-            double avgWindSpeed = 10; // m/s
-            Random rand = new Random();
+            var telemetryDataPoint = new
+            {
+                DeviceId = "myFirstDevice",
+                Direction = direction,
+                Volume = volume
+            };
 
-            double currentWindSpeed = avgWindSpeed + rand.NextDouble() * 4 - 2;
+            var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
+            var message = new Message(Encoding.ASCII.GetBytes(messageString));
 
-                var telemetryDataPoint = new
-                {
-                    DeviceId = "myFirstDevice",
-                    Direction = direction,
-                    Power = power,
-                };
-
-                var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
-                var message = new Message(Encoding.ASCII.GetBytes(messageString));
-
-                await _deviceClient.SendEventAsync(message);
+            await _deviceClient.SendEventAsync(message);
         }
     }
 }
