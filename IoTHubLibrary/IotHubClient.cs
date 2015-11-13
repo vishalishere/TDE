@@ -19,21 +19,23 @@ namespace IoTHubLibrary
             _deviceClient = DeviceClient.Create(iotHubUri, auth, TransportType.Http1);
         }
 
-        public IAsyncAction SendDeviceToCloudMessagesAsync(int direction, System.UInt64 volume)
+        public IAsyncAction SendDeviceToCloudMessagesAsync(int CC, int ASDF, int PEAK, System.UInt64 volume)
         {
             Func<Task> action = async () =>
             {
-                await SendDeviceToCloudMessagesInternalAsync(direction, volume);
+                await SendDeviceToCloudMessagesInternalAsync(CC, ASDF, PEAK, volume);
             };
             return action().AsAsyncAction();
         }
 
-        private static async Task SendDeviceToCloudMessagesInternalAsync(int direction, System.UInt64 volume)
+        private static async Task SendDeviceToCloudMessagesInternalAsync(int CC, int ASDF, int PEAK, System.UInt64 volume)
         {
             var telemetryDataPoint = new
             {
                 DeviceId = "myFirstDevice",
-                Direction = direction,
+                Direction_CC = CC,
+                Direction_ADSF = ASDF,
+                Direction_PEAK = PEAK,
                 Volume = volume
             };
 

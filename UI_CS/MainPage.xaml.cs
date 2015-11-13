@@ -97,7 +97,7 @@ namespace UI_CS
                 Direction(i8, 0.4, -1 * i4, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Blue), 1);
                 sampleCount++;
                 text9.Text = sampleCount.ToString();
-                await client.SendDeviceToCloudMessagesAsync((double)i2, (double)vol);
+                await client.SendDeviceToCloudMessagesAsync(i2, i3, i4, vol);
             }
         }
 
