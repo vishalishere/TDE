@@ -98,7 +98,8 @@ void DataConsumer::Worker()
 					break;
 				}
 			}
-			HeartBeat(HeartBeatType::BUFFERING, 10000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter, 0, m_devices[0].GetPosition(), m_devices[1].GetPosition());
+			HeartBeat(HeartBeatType::BUFFERING, 10000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter, 
+				0, m_devices[m_params->Device0()].GetPosition(), m_devices[m_params->Device1()].GetPosition());
 
 			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
 		}
@@ -195,7 +196,7 @@ DataConsumer::Status DataConsumer::HandlePackets()
 
 bool DataConsumer::ProcessData()
 {
-	size_t smallestBuffer = m_buffer[0][0].size();
+	size_t smallestBuffer = m_buffer[m_params->Device0()][m_params->Channel0()].size();
 	for (size_t i = 0; i < m_numberOfDevices; i++)
 	{
 		for (size_t j = 0; j < m_devices[i].GetChannels(); j++)
@@ -207,7 +208,7 @@ bool DataConsumer::ProcessData()
 	if (smallestBuffer > m_params->BufferSize())
 	{
 		m_collector->StoreData(false);
-		UINT64 latestBegin = m_buffer[0][0][0].timestamp;
+		UINT64 latestBegin = m_buffer[m_params->Device0()][m_params->Channel0()][0].timestamp;
 
 		for (size_t i = 0; i < m_numberOfDevices; i++)
 		{
@@ -223,13 +224,13 @@ bool DataConsumer::ProcessData()
 
 		while (1) 
 		{ 
-			if (m_buffer[0][0][pos].timestamp < latestBegin) pos++; else break;	
-			if (pos == m_buffer[0][0].size()) break;
+			if (m_buffer[m_params->Device0()][m_params->Channel0()][pos].timestamp < latestBegin) pos++; else break;
+			if (pos == m_buffer[m_params->Device0()][m_params->Channel0()].size()) break;
 		}
 
-		while (pos < m_buffer[0][0].size())
+		while (pos < m_buffer[m_params->Device0()][m_params->Channel0()].size())
 		{
-			if (abs(m_buffer[0][0][pos].value) > (int)threshold)
+			if (abs(m_buffer[m_params->Device0()][m_params->Channel0()][pos].value) > (int)threshold)
 			{
 				sample_pos = pos;
 				sample = true;
@@ -351,7 +352,7 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 	int delay2 = tde.FindDelay(TimeDelayEstimation::Algoritm::ASDF);
 	int delay3 = tde.FindDelay(TimeDelayEstimation::Algoritm::PEAK);
 
-	m_uiHandler(m_counter++, (int)HeartBeatType::DATA, delay1, delay2, delay3, (int)align, threshold, volume, m_devices[0].GetSamplesPerSec());
+	m_uiHandler(m_counter++, (int)HeartBeatType::DATA, delay1, delay2, delay3, (int)align, threshold, volume, m_devices[m_params->Device0()].GetSamplesPerSec());
 	
 	if (m_params->StoreSample())
 	{
