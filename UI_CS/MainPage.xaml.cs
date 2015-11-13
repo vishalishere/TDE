@@ -74,6 +74,7 @@ namespace UI_CS
             }
 
             if (bufferingCount == 10) ResetEngine(10);
+            if (bufferingCount == 20) Reboot();
 
             text3.Text = i2.ToString();
             text4.Text = i3.ToString();
@@ -97,7 +98,7 @@ namespace UI_CS
                 Direction(i8, 0.4, -1 * i4, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Blue), 1);
                 sampleCount++;
                 text9.Text = sampleCount.ToString();
-                await client.SendDeviceToCloudMessagesAsync(i2, i3, i4, vol);
+                await client.SendDeviceToCloudMessagesAsync(i2, i3, i4, i6);
             }
         }
 
@@ -125,7 +126,7 @@ namespace UI_CS
                 text1.Text = "STARTED";
                 timer.Stop();
                 engine = new AudioEngine.WASAPIEngine();
-                AudioEngine.TDEParameters param = new AudioEngine.TDEParameters(1, 0, 0, 0, 3);
+                AudioEngine.TDEParameters param = new AudioEngine.TDEParameters(2, 0, 1, 0, 0);
                 await engine.InitializeAsync(ThreadDelegate, param);
             }
             else
