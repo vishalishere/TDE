@@ -3,7 +3,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Client;
 using Newtonsoft.Json;
-using Windows.Foundation;
 
 namespace IoTHubLibrary
 {
@@ -14,6 +13,7 @@ namespace IoTHubLibrary
         static DeviceClient _deviceClient;
         static string iotHubUri = "AudioTestHub.azure-devices.net";
         static string deviceKey ="ePeF5AXJRqDCoWXBniAXJh4TInVDy8s+59JRQIBRPFw=";
+        Task task = null;
 
         public IotHubClient()
         {
@@ -21,35 +21,33 @@ namespace IoTHubLibrary
             _deviceClient = DeviceClient.Create(iotHubUri, auth, TransportType.Http1);
         }
 
-        public IAsyncAction SendDeviceToCloudMessagesAsync(int CC, int ASDF, int PEAK, System.UInt64 volume)
+        public bool SendDeviceToCloudMessagesAsync(int msg, int cc, int asdf, int peak, System.UInt64 threshold, System.UInt64 volume)
         {
+            if (task != null && (
+                task.Status == TaskStatus.Running || 
+                task.Status == TaskStatus.WaitingForActivation || 
+                task.Status == TaskStatus.WaitingToRun ||
+                task.Status == TaskStatus.Created)) return true;
             Func<Task> action = async () =>
             {
-                await SendDeviceToCloudMessagesInternalAsync(CC, ASDF, PEAK, volume);
+                await SendDeviceToCloudMessagesInternalAsync(msg, cc, asdf, peak, threshold, volume);
             };
-            return action().AsAsyncAction();
+            task = Task.Factory.StartNew(action);
+            return false;
         }
 
-
-        public async void ReceiveAsync(object o, MsgHandler m)
-        {
-            await _deviceClient.OpenAsync();
-            Message x = await _deviceClient.ReceiveAsync();
-            if (x != null)
-                m(o, x.ToString());
-            else
-                m(o, "No Messages");
-        }
-
-        private static async Task SendDeviceToCloudMessagesInternalAsync(int CC, int ASDF, int PEAK, System.UInt64 volume)
+        private static async Task SendDeviceToCloudMessagesInternalAsync(int msg, int cc, int asdf, int peak, System.UInt64 threshold, System.UInt64 volume)
         {
             var telemetryDataPoint = new
             {
                 DeviceId = "myFirstDevice",
-                Direction_CC = CC,
-                Direction_ADSF = ASDF,
-                Direction_PEAK = PEAK,
-                Volume = volume
+                TIME = DateTime.UtcNow,
+                MSG = msg,
+                CC = cc,
+                ADSF = asdf,
+                PEAK = peak,
+                THRES = threshold,
+                VOL = volume
             };
 
             var messageString = JsonConvert.SerializeObject(telemetryDataPoint);

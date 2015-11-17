@@ -43,7 +43,8 @@ namespace IoTHub
                 if (eventData == null) continue;
 
                 string data = Encoding.UTF8.GetString(eventData.GetBytes());
-                Console.WriteLine(string.Format("Message received. Partition: {0} Data: '{1}'", partition, data));
+                //Console.WriteLine(string.Format("Message received. Partition: {0} Data: '{1}'", partition, data));
+                Console.WriteLine(string.Format("'{0}'", data));
             }
         }
 

@@ -1,4 +1,6 @@
-﻿using System;
+﻿// #define KINECT
+
+using System;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Shapes;
@@ -7,7 +9,7 @@ using Windows.UI.Xaml.Media;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
-namespace UI_CS
+namespace SDE
 {
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
@@ -20,6 +22,7 @@ namespace UI_CS
         private uint bufferingCount;
         private uint startCounter = 10;
         private uint sampleCount = 0;
+        private uint messageCounter = 0;
 
         public MainPage()
         {
@@ -41,7 +44,43 @@ namespace UI_CS
             engine.Finish();
         }
 
-       private void UpdateUI(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
+        private void ThreadDelegate(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
+        {
+            var ignored1 = this.Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+            {
+                UpdateUI(i0, i1, i2, i3, i4, i5, i6, i7, i8);
+            });
+
+            var ignored2 = this.Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+            {
+                try
+                {
+                    if ((AudioEngine.HeartBeatType)i1 == AudioEngine.HeartBeatType.DATA || messageCounter == 100)
+                    {
+                        messageCounter = 0;
+                        if (client.SendDeviceToCloudMessagesAsync(i1, i2, i3, i4, i6, i7))
+                        {
+                            label0.Text = "Active";
+                        }
+                        else
+                        {
+                            label0.Text = "New message";
+                        }
+                    }
+                    else
+                    {
+                        messageCounter++;
+                        label0.Text = "";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Error(ex.ToString());
+                }
+            });
+        }
+
+        private void UpdateUI(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
         {
             try
             {
@@ -100,7 +139,6 @@ namespace UI_CS
                     Direction(i8, 0.4, -1 * i4, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Blue), 1);
                     sampleCount++;
                     text9.Text = sampleCount.ToString();
-                    //client.SendDeviceToCloudMessagesAsync(i2, i3, i4, i6, i7);
                 }
             }
             catch (Exception ex)
@@ -135,7 +173,11 @@ namespace UI_CS
                     text1.Text = "STARTED";
                     timer.Stop();
                     engine = new AudioEngine.WASAPIEngine();
-                    AudioEngine.TDEParameters param = new AudioEngine.TDEParameters(2, 0, 1, 0, 0); // TDEParameters(1, 0, 0, 0, 3);
+#if KINECT
+                    AudioEngine.TDEParameters param = new AudioEngine.TDEParameters(1, 0, 0, 0, 3);
+#else
+                    AudioEngine.TDEParameters param = new AudioEngine.TDEParameters(2, 0, 1, 0, 0);
+#endif
                     await engine.InitializeAsync(ThreadDelegate, param);
                 }
                 else
@@ -168,14 +210,6 @@ namespace UI_CS
             hc.RebootComputer();
         }
 
-        private void ThreadDelegate(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
-        {
-            var ignored = this.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                UpdateUI(i0, i1, i2, i3, i4, i5, i6, i7, i8);
-            });
-        }
-
         private void Error(string err)
         {
             label1.Text = err;
@@ -187,6 +221,7 @@ namespace UI_CS
             label7.Text = "";
             label8.Text = "";
             label9.Text = "";
+            label0.Text = "";
 
             text1.Text = "";
             text1.Text = "";
@@ -215,8 +250,8 @@ namespace UI_CS
             text8.Text = "";
             text9.Text = "";
             canvas.Children.Clear();
-        } 
-        
+        }
+
         private void SetLabels(AudioEngine.HeartBeatType type)
         {
             label1.Text = "STATUS";
@@ -226,7 +261,7 @@ namespace UI_CS
                 case AudioEngine.HeartBeatType.INVALID:
                 case AudioEngine.HeartBeatType.DEVICE_ERROR:
                 case AudioEngine.HeartBeatType.NODEVICE:
-                    { 
+                    {
                         label2.Text = "";
                         label3.Text = "";
                         label4.Text = "";
@@ -263,6 +298,6 @@ namespace UI_CS
                         break;
                     }
             }
-        }  
+        }
     }
 }

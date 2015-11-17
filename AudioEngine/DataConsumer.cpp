@@ -56,7 +56,7 @@ void DataConsumer::Worker()
 	auto workItemDelegate = [this](Windows::Foundation::IAsyncAction^ action) 
 	{ 
 		while (1) {
-			bool error;
+			bool error = false;
 			for (size_t i = 0; i < m_numberOfDevices; i++)
 			{
 				AudioDataPacket *first, *last;
@@ -118,7 +118,7 @@ void DataConsumer::Worker()
 	auto workItemHandler = ref new Windows::System::Threading::WorkItemHandler(workItemDelegate);
 	auto completionHandler = ref new Windows::Foundation::AsyncActionCompletedHandler(completionDelegate, Platform::CallbackContext::Same);
 
-	WorkItem = Windows::System::Threading::ThreadPool::RunAsync(workItemHandler, Windows::System::Threading::WorkItemPriority::Normal);
+	WorkItem = Windows::System::Threading::ThreadPool::RunAsync(workItemHandler, Windows::System::Threading::WorkItemPriority::Low);
 	WorkItem->Completed = completionHandler;
 }
 
@@ -154,8 +154,8 @@ DataConsumer::Status DataConsumer::HandlePackets()
 			removedData = true;
 		}
 	}
-	delete pos1;
-	delete pos2;
+	delete [] pos1;
+	delete [] pos2;
 	if (removedData) return Status::EXCESS_DATA;
 
 	for (size_t i = 0; i < m_numberOfDevices; i++)
