@@ -41,7 +41,7 @@ namespace RPi_Helper
             {
                 wrGETURL = (HttpWebRequest)WebRequest.Create(URL);
                 wrGETURL.Method = "POST";
-                wrGETURL.Credentials = new NetworkCredential("Administrator", "p@ssw0rd");
+                wrGETURL.Credentials = new NetworkCredential(AccessData.Access.User, AccessData.Access.Password);
 
                 HttpWebResponse Response = (HttpWebResponse)(await wrGETURL.GetResponseAsync());
                 if (Response.StatusCode == HttpStatusCode.OK)
@@ -103,7 +103,7 @@ namespace RPi_Helper
             try
             {
                 wrGETURL = (HttpWebRequest)WebRequest.Create(URL);
-                wrGETURL.Credentials = new NetworkCredential("Administrator", "p@ssw0rd");
+                wrGETURL.Credentials = new NetworkCredential(AccessData.Access.User, AccessData.Access.Password);
                 HttpWebResponse Response = (HttpWebResponse)(await wrGETURL.GetResponseAsync());
                 if (Response.StatusCode == HttpStatusCode.OK)
                 {

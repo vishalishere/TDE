@@ -1,4 +1,4 @@
-﻿// #define KINECT
+﻿#define KINECT
 
 using System;
 using Windows.UI.Core;

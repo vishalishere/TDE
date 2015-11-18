@@ -9,16 +9,15 @@ namespace IoTHubLibrary
     public delegate void MsgHandler(Object o, String s);
 
     public sealed class IotHubClient
-    { 
-        static DeviceClient _deviceClient;
-        static string iotHubUri = "AudioTestHub.azure-devices.net";
-        static string deviceKey ="ePeF5AXJRqDCoWXBniAXJh4TInVDy8s+59JRQIBRPFw=";
+    {
+        static DeviceClient _deviceClient;   
+
         Task task = null;
 
         public IotHubClient()
         {
-            var auth = new DeviceAuthenticationWithRegistrySymmetricKey("myFirstDevice", deviceKey);
-            _deviceClient = DeviceClient.Create(iotHubUri, auth, TransportType.Http1);
+            var auth = new DeviceAuthenticationWithRegistrySymmetricKey(AccessData.Access.DeviceID, AccessData.Access.DeviceKey);
+            _deviceClient = DeviceClient.Create(AccessData.Access.IoTHubUri, auth, TransportType.Http1);
         }
 
         public bool SendDeviceToCloudMessagesAsync(int msg, int cc, int asdf, int peak, System.UInt64 threshold, System.UInt64 volume)
@@ -40,7 +39,7 @@ namespace IoTHubLibrary
         {
             var telemetryDataPoint = new
             {
-                DeviceId = "myFirstDevice",
+                DeviceId = AccessData.Access.DeviceID,
                 TIME = DateTime.UtcNow,
                 MSG = msg,
                 CC = cc,
