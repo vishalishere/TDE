@@ -1,4 +1,4 @@
-﻿#define CREATE_NEW_DEVICE
+﻿//#define CREATE_NEW_DEVICE
 
 using System;
 using System.Text;
@@ -25,7 +25,7 @@ namespace IoTHub
             Console.ReadLine();
 #else
             Console.WriteLine("Receive messages\n");
-            eventHubClient = EventHubClient.CreateFromConnectionString(connectionString, iotHubD2cEndpoint);
+            eventHubClient = EventHubClient.CreateFromConnectionString(Access.Access.ConnectionString, iotHubD2cEndpoint);
 
             var d2cPartitions = eventHubClient.GetRuntimeInformation().PartitionIds;
 
