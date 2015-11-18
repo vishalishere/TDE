@@ -18,7 +18,7 @@
 
 using namespace Windows::Storage;
 using namespace Windows::System::Threading;
-using namespace AudioEngine;
+using namespace LibAudio;
 using namespace Platform;
 
 #define BITS_PER_BYTE 8

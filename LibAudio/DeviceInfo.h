@@ -1,7 +1,7 @@
 #pragma once
 #include <Windows.h>
 
-namespace AudioEngine
+namespace LibAudio
 {
 	class DeviceInfo
 	{

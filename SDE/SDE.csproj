@@ -128,17 +128,17 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AudioEngine\AudioEngine.vcxproj">
+    <ProjectReference Include="..\LibAudio\LibAudio.vcxproj">
       <Project>{6d016b27-6145-474b-b8f1-55741ca0eee7}</Project>
-      <Name>AudioEngine</Name>
+      <Name>LibAudio</Name>
     </ProjectReference>
-    <ProjectReference Include="..\IoTHubLibrary\IoTHubLibrary.csproj">
+    <ProjectReference Include="..\LibIoTHub\LibIoTHub.csproj">
       <Project>{25dfa02b-1eb7-43ab-ad27-f922ba52407d}</Project>
-      <Name>IoTHubLibrary</Name>
+      <Name>LibIoTHub</Name>
     </ProjectReference>
-    <ProjectReference Include="..\RPi_Helper\RPi_Helper.csproj">
+    <ProjectReference Include="..\LibRPi\LibRPi.csproj">
       <Project>{e11de85b-f1b9-4140-bd9a-b0de9a97603b}</Project>
-      <Name>RPi_Helper</Name>
+      <Name>LibRPi</Name>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">

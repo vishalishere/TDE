@@ -29,8 +29,8 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6d016b27-6145-474b-b8f1-55741ca0eee7}</ProjectGuid>
     <Keyword>WindowsRuntimeComponent</Keyword>
-    <ProjectName>AudioEngine</ProjectName>
-    <RootNamespace>AudioEngine</RootNamespace>
+    <ProjectName>LibAudio</ProjectName>
+    <RootNamespace>LibAudio</RootNamespace>
     <DefaultLanguage>en-US</DefaultLanguage>
     <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
     <AppContainerApplication>true</AppContainerApplication>

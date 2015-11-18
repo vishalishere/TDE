@@ -27,7 +27,7 @@ using namespace Windows::Media::Devices;
 using namespace Windows::Storage::Streams;
 
 #pragma once
-namespace AudioEngine
+namespace LibAudio
 {
     // Primary WASAPI Capture Class
     class WASAPICapture :

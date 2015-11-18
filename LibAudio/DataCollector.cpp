@@ -5,7 +5,7 @@
 using namespace Windows::Storage;
 using namespace Windows::System::Threading;
 using namespace Platform;
-using namespace AudioEngine;
+using namespace LibAudio;
 
 DataCollector::DataCollector(size_t nDevices) : m_numberOfDevices(nDevices), m_store(true), m_error(false)
 {

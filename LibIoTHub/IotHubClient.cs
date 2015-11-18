@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Client;
 using Newtonsoft.Json;
 
-namespace IoTHubLibrary
+namespace LibIoTHub
 {
     public delegate void MsgHandler(Object o, String s);
 

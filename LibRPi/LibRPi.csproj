@@ -7,8 +7,8 @@
     <ProjectGuid>{E11DE85B-F1B9-4140-BD9A-B0DE9A97603B}</ProjectGuid>
     <OutputType>winmdobj</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>RPi_Helper</RootNamespace>
-    <AssemblyName>RPi_Helper</AssemblyName>
+    <RootNamespace>LibRPi</RootNamespace>
+    <AssemblyName>LibRPi</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
     <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
     <TargetPlatformVersion>10.0.10240.0</TargetPlatformVersion>

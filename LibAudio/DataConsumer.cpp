@@ -7,7 +7,7 @@
 using namespace Windows::Storage;
 using namespace Windows::System::Threading;
 using namespace Platform;
-using namespace AudioEngine;
+using namespace LibAudio;
 using namespace concurrency;
 
 DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIDelegate^ func, TDEParameters^ parameters) :

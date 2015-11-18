@@ -16,8 +16,8 @@ namespace SDE
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private AudioEngine.WASAPIEngine engine;
-        private IoTHubLibrary.IotHubClient client;
+        private LibAudio.WASAPIEngine engine;
+        private LibIoTHub.IotHubClient client;
         private DispatcherTimer timer;
         private uint bufferingCount;
         private uint startCounter = 10;
@@ -28,14 +28,14 @@ namespace SDE
         {
             this.InitializeComponent();
 
-            client = new IoTHubLibrary.IotHubClient();
+            client = new LibIoTHub.IotHubClient();
 
             TimeSpan ts = new TimeSpan(10000000);
             timer = new DispatcherTimer();
             timer.Interval = ts;
             timer.Tick += Tick;
             timer.Start();
-            SetLabels(AudioEngine.HeartBeatType.INVALID);
+            SetLabels(LibAudio.HeartBeatType.INVALID);
             text1.Text = "STARTING";
         }
 
@@ -55,7 +55,7 @@ namespace SDE
             {
                 try
                 {
-                    if ((AudioEngine.HeartBeatType)i1 == AudioEngine.HeartBeatType.DATA || messageCounter == 100)
+                    if ((LibAudio.HeartBeatType)i1 == LibAudio.HeartBeatType.DATA || messageCounter == 100)
                     {
                         messageCounter = 0;
                         if (client.SendDeviceToCloudMessagesAsync(i1, i2, i3, i4, i6, i7))
@@ -85,30 +85,30 @@ namespace SDE
             try
             {
                 text2.Text = i0.ToString();
-                SetLabels((AudioEngine.HeartBeatType)i1);
+                SetLabels((LibAudio.HeartBeatType)i1);
 
-                switch ((AudioEngine.HeartBeatType)i1)
+                switch ((LibAudio.HeartBeatType)i1)
                 {
-                    case AudioEngine.HeartBeatType.DATA:
+                    case LibAudio.HeartBeatType.DATA:
                         text1.Text = "DATA";
                         bufferingCount = 0;
                         break;
-                    case AudioEngine.HeartBeatType.INVALID:
+                    case LibAudio.HeartBeatType.INVALID:
                         text1.Text = "INVALID";
                         break;
-                    case AudioEngine.HeartBeatType.SILENCE:
+                    case LibAudio.HeartBeatType.SILENCE:
                         text1.Text = "SILENCE";
                         bufferingCount = 0;
                         break;
-                    case AudioEngine.HeartBeatType.BUFFERING:
+                    case LibAudio.HeartBeatType.BUFFERING:
                         text1.Text = "BUFFERING";
                         bufferingCount++;
                         break;
-                    case AudioEngine.HeartBeatType.DEVICE_ERROR:
+                    case LibAudio.HeartBeatType.DEVICE_ERROR:
                         text1.Text = "ERROR";
                         ResetEngine(10);
                         break;
-                    case AudioEngine.HeartBeatType.NODEVICE:
+                    case LibAudio.HeartBeatType.NODEVICE:
                         text1.Text = "NO DEVICES";
                         Reboot();
                         break;
@@ -124,12 +124,12 @@ namespace SDE
                 text7.Text = i6.ToString();
                 text8.Text = i7.ToString();
 
-                if ((AudioEngine.HeartBeatType)i1 != AudioEngine.HeartBeatType.BUFFERING)
+                if ((LibAudio.HeartBeatType)i1 != LibAudio.HeartBeatType.BUFFERING)
                 {
                     canvas.Children.Clear();
                 }
 
-                if ((AudioEngine.HeartBeatType)i1 == AudioEngine.HeartBeatType.DATA)
+                if ((LibAudio.HeartBeatType)i1 == LibAudio.HeartBeatType.DATA)
                 {
                     System.UInt64 vol = i6 / 20;
                     if (vol > 800) vol = 800;
@@ -172,11 +172,11 @@ namespace SDE
                 {
                     text1.Text = "STARTED";
                     timer.Stop();
-                    engine = new AudioEngine.WASAPIEngine();
+                    engine = new LibAudio.WASAPIEngine();
 #if KINECT
-                    AudioEngine.TDEParameters param = new AudioEngine.TDEParameters(1, 0, 0, 0, 3);
+                    LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 0, 3);
 #else
-                    AudioEngine.TDEParameters param = new AudioEngine.TDEParameters(2, 0, 1, 0, 0);
+                    LibAudio.TDEParameters param = new LibAudio.TDEParameters(2, 0, 1, 0, 0);
 #endif
                     await engine.InitializeAsync(ThreadDelegate, param);
                 }
@@ -206,7 +206,7 @@ namespace SDE
             engine.Finish();
             engine = null;
             EmptyTexts("REBOOTING");
-            RPi_Helper.HelperClass hc = new RPi_Helper.HelperClass();
+            LibRPi.HelperClass hc = new LibRPi.HelperClass();
             hc.RebootComputer();
         }
 
@@ -252,15 +252,15 @@ namespace SDE
             canvas.Children.Clear();
         }
 
-        private void SetLabels(AudioEngine.HeartBeatType type)
+        private void SetLabels(LibAudio.HeartBeatType type)
         {
             label1.Text = "STATUS";
 
             switch (type)
             {
-                case AudioEngine.HeartBeatType.INVALID:
-                case AudioEngine.HeartBeatType.DEVICE_ERROR:
-                case AudioEngine.HeartBeatType.NODEVICE:
+                case LibAudio.HeartBeatType.INVALID:
+                case LibAudio.HeartBeatType.DEVICE_ERROR:
+                case LibAudio.HeartBeatType.NODEVICE:
                     {
                         label2.Text = "";
                         label3.Text = "";
@@ -272,8 +272,8 @@ namespace SDE
                         label9.Text = "";
                         break;
                     };
-                case AudioEngine.HeartBeatType.DATA:
-                case AudioEngine.HeartBeatType.SILENCE:
+                case LibAudio.HeartBeatType.DATA:
+                case LibAudio.HeartBeatType.SILENCE:
                     {
                         label2.Text = "BEAT";
                         label3.Text = "CC";
@@ -285,7 +285,7 @@ namespace SDE
                         label9.Text = "SAMPLES";
                         break;
                     };
-                case AudioEngine.HeartBeatType.BUFFERING:
+                case LibAudio.HeartBeatType.BUFFERING:
                     {
                         label2.Text = "BEAT";
                         label3.Text = "PAC";

@@ -6,7 +6,7 @@
 #include "DeviceInfo.h"
 #include "AudioDataPacket.h"
 
-namespace AudioEngine
+namespace LibAudio
 {
 	ref class DataCollector sealed
 	{

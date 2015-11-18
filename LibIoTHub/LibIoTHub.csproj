@@ -7,8 +7,8 @@
     <ProjectGuid>{25DFA02B-1EB7-43AB-AD27-F922BA52407D}</ProjectGuid>
     <OutputType>winmdobj</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>IoTHubLibrary</RootNamespace>
-    <AssemblyName>IoTHubLibrary</AssemblyName>
+    <RootNamespace>LibIoTHub</RootNamespace>
+    <AssemblyName>LibIoTHub</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
     <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
     <TargetPlatformVersion>10.0.10240.0</TargetPlatformVersion>

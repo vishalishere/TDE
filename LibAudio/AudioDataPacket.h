@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <Windows.h>
 
-namespace AudioEngine
+namespace LibAudio
 {
 	class AudioDataPacket
 	{

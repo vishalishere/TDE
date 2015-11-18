@@ -16,7 +16,7 @@
 
 using namespace Windows::Storage::Streams;
 
-namespace AudioEngine
+namespace LibAudio
 {
     // NB: All states >= DeviceStateInitialized will allow some methods
     // to be called successfully on the Audio Client

@@ -19,7 +19,7 @@ using namespace Windows::Storage;
 #define STORE_SAMPLE 0
 #define SAMPLE_FILE "SAMPLE.TXT"
 
-namespace AudioEngine
+namespace LibAudio
 {
 	static Windows::Foundation::IAsyncAction^ WorkItem = nullptr;
 

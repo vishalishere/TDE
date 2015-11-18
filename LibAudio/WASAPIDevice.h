@@ -9,7 +9,7 @@ using namespace Windows::Media::Devices;
 using namespace Windows::Devices::Enumeration;
 using namespace Platform::Collections;
 
-namespace AudioEngine
+namespace LibAudio
 {
 	ref class WASAPIDevice sealed
 	{
