@@ -2,14 +2,14 @@
 {
     public sealed class Access
     {
-        static string user = "Administrator";
-        static string password = "p@ssw0rd";
+        static string user = "{XXXXX}";
+        static string password = "{XXXXX}";
 
-        static string iotHubUri = "AudioHub.azure-devices.net";
-        static string deviceKey = "I+Ak2nEjd9O9yzgWA7S8Ibd2W2WqTuKcrJu+DlY8vYc=";
+        static string iotHubUri = "{XXXXX}";
+        static string deviceKey = "{XXXXX}";
 
-        static string connectionString = "HostName=AudioHub.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=JbdA3RxBVepiJ5cITBdrt5SmDD2UVcJjQHDBuVO7uu0=";
-        static string deviceId = "RaspberryPi2";
+        static string connectionString = "{XXXXX}";
+        static string deviceId = "{XXXXX}";
 
         public static string User { get { return user; } }
         public static string Password { get { return password; } }
