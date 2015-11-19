@@ -1,6 +1,4 @@
-﻿#define KINECT
-
-using System;
+﻿using System;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Shapes;
@@ -17,18 +15,20 @@ namespace SDE
     public sealed partial class MainPage : Page
     {
         private LibAudio.WASAPIEngine engine;
-        private LibIoTHub.IotHubClient client;
+        private LibIoTHubDebug.IotHubClient client;
         private DispatcherTimer timer;
+
         private uint bufferingCount;
         private uint startCounter = 10;
         private uint sampleCount = 0;
         private uint messageCounter = 0;
+        private bool activeTask = false;
 
         public MainPage()
         {
             this.InitializeComponent();
 
-            client = new LibIoTHub.IotHubClient();
+            client = new LibIoTHubDebug.IotHubClient();
 
             TimeSpan ts = new TimeSpan(10000000);
             timer = new DispatcherTimer();
@@ -46,31 +46,58 @@ namespace SDE
 
         private void ThreadDelegate(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
         {
-            var ignored1 = this.Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+            var ignored1 = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
             {
                 UpdateUI(i0, i1, i2, i3, i4, i5, i6, i7, i8);
             });
 
-            var ignored2 = this.Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+            var ignored2 = Dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
             {
                 try
                 {
                     if ((LibAudio.HeartBeatType)i1 == LibAudio.HeartBeatType.DATA || messageCounter == 100)
                     {
                         messageCounter = 0;
-                        if (client.SendDeviceToCloudMessagesAsync(i1, i2, i3, i4, i6, i7))
+                        client.AddMessage(i1, i2, i3, i4, i6, i7);          
+                        Windows.Foundation.AsyncActionCompletedHandler handler = (Windows.Foundation.IAsyncAction asyncInfo, Windows.Foundation.AsyncStatus asyncStatus) =>
                         {
-                            label0.Text = "Active";
+                            var ignored = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+                            {
+                                switch (asyncStatus)
+                                {
+                                    case Windows.Foundation.AsyncStatus.Completed: exception.Text = "Messages sent"; break;
+                                    case Windows.Foundation.AsyncStatus.Canceled: exception.Text = "Canceled " + asyncInfo.ErrorCode; break;
+                                    case Windows.Foundation.AsyncStatus.Error:
+                                        string s = "Error: " + asyncInfo.ErrorCode;
+                                        if ( exception.Text == s )
+                                        {
+                                            exception.Text = s + "*";
+                                        }
+                                        else
+                                        {
+                                            exception.Text = s;
+                                        }                   
+                                        break;         
+                                }
+                                activeTask = false;
+                            });
+                        };
+
+                        if (!activeTask)
+                        {
+                            client.SendMessagesAsync(handler);
+                            label0.Text = "New task";
+                            activeTask = true;
                         }
                         else
                         {
-                            label0.Text = "New message";
+                            label0.Text = "Active task";
                         }
                     }
                     else
                     {
                         messageCounter++;
-                        label0.Text = "";
+                        label0.Text = messageCounter.ToString();
                     }
                 }
                 catch (Exception ex)
@@ -137,9 +164,9 @@ namespace SDE
                     Direction(i8, 0.4, -1 * i2, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Red), 4);
                     Direction(i8, 0.4, -1 * i3, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Green), 2);
                     Direction(i8, 0.4, -1 * i4, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Blue), 1);
-                    sampleCount++;
-                    text9.Text = sampleCount.ToString();
+                    sampleCount++;       
                 }
+                text9.Text = sampleCount.ToString();
             }
             catch (Exception ex)
             {
@@ -173,10 +200,10 @@ namespace SDE
                     text1.Text = "STARTED";
                     timer.Stop();
                     engine = new LibAudio.WASAPIEngine();
-#if KINECT
+#if _WIN64
                     LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 0, 3);
 #else
-                    LibAudio.TDEParameters param = new LibAudio.TDEParameters(2, 0, 1, 0, 0);
+                    LibAudio.TDEParameters param = new LibAudio.TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
 #endif
                     await engine.InitializeAsync(ThreadDelegate, param);
                 }
@@ -212,7 +239,9 @@ namespace SDE
 
         private void Error(string err)
         {
-            label1.Text = err;
+            exception.Text = err;
+
+            label1.Text = "";
             label2.Text = "";
             label3.Text = "";
             label4.Text = "";
@@ -240,7 +269,6 @@ namespace SDE
         private void EmptyTexts(string status)
         {
             text1.Text = status;
-            text1.Text = "";
             text2.Text = "";
             text3.Text = "";
             text4.Text = "";
