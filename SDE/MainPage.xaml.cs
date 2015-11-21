@@ -15,26 +15,37 @@ namespace SDE
     public sealed partial class MainPage : Page
     {
         private LibAudio.WASAPIEngine engine;
-        private LibIoTHubDebug.IotHubClient client;
-        private DispatcherTimer timer;
+        private LibIoTHubDebug.IotHubClient client = new LibIoTHubDebug.IotHubClient();
+        private DispatcherTimer startTimer = new DispatcherTimer();
+        private DispatcherTimer SendTimer = new DispatcherTimer();
+        private DispatcherTimer TestTimer = new DispatcherTimer();
 
-        private uint bufferingCount;
+        private uint bufferingCount = 0;
         private uint startCounter = 10;
         private uint sampleCount = 0;
-        private uint messageCounter = 0;
+        private uint messageCount = 0;
+        private uint errorCount = 0;
         private bool activeTask = false;
 
         public MainPage()
         {
             this.InitializeComponent();
 
-            client = new LibIoTHubDebug.IotHubClient();
+            TimeSpan ts = new TimeSpan(600000000); // 60 s
 
-            TimeSpan ts = new TimeSpan(10000000);
-            timer = new DispatcherTimer();
-            timer.Interval = ts;
-            timer.Tick += Tick;
-            timer.Start();
+            TestTimer.Interval = ts;
+            TestTimer.Tick += TestSend;
+            TestTimer.Start();
+
+            ts = new TimeSpan(50000000); // 5 s
+            SendTimer.Interval = ts;
+            SendTimer.Tick += Send;
+
+            ts = new TimeSpan(10000000); // 1 s
+            startTimer.Interval = ts;
+            startTimer.Tick += Tick;
+            startTimer.Start();
+
             SetLabels(LibAudio.HeartBeatType.INVALID);
             text1.Text = "STARTING";
         }
@@ -51,53 +62,20 @@ namespace SDE
                 UpdateUI(i0, i1, i2, i3, i4, i5, i6, i7, i8);
             });
 
-            var ignored2 = Dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            var ignored2 = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
             {
                 try
                 {
-                    if ((LibAudio.HeartBeatType)i1 == LibAudio.HeartBeatType.DATA || messageCounter == 100)
+                    if ((LibAudio.HeartBeatType)i1 == LibAudio.HeartBeatType.DATA || messageCount == 100)
                     {
-                        messageCounter = 0;
-                        client.AddMessage(i1, i2, i3, i4, i6, i7);          
-                        Windows.Foundation.AsyncActionCompletedHandler handler = (Windows.Foundation.IAsyncAction asyncInfo, Windows.Foundation.AsyncStatus asyncStatus) =>
-                        {
-                            var ignored = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
-                            {
-                                switch (asyncStatus)
-                                {
-                                    case Windows.Foundation.AsyncStatus.Completed: exception.Text = "Messages sent"; break;
-                                    case Windows.Foundation.AsyncStatus.Canceled: exception.Text = "Canceled " + asyncInfo.ErrorCode; break;
-                                    case Windows.Foundation.AsyncStatus.Error:
-                                        string s = "Error: " + asyncInfo.ErrorCode;
-                                        if ( exception.Text == s )
-                                        {
-                                            exception.Text = s + "*";
-                                        }
-                                        else
-                                        {
-                                            exception.Text = s;
-                                        }                   
-                                        break;         
-                                }
-                                activeTask = false;
-                            });
-                        };
-
-                        if (!activeTask)
-                        {
-                            client.SendMessagesAsync(handler);
-                            label0.Text = "New task";
-                            activeTask = true;
-                        }
-                        else
-                        {
-                            label0.Text = "Active task";
-                        }
+                        messageCount = 0;
+                        client.AddMessage(i1, i2, i3, i4, i6, i7);
+                        label0.Text = "Message added";
                     }
                     else
                     {
-                        messageCounter++;
-                        label0.Text = messageCounter.ToString();
+                        messageCount++;
+                        label0.Text = messageCount.ToString();
                     }
                 }
                 catch (Exception ex)
@@ -133,7 +111,7 @@ namespace SDE
                         break;
                     case LibAudio.HeartBeatType.DEVICE_ERROR:
                         text1.Text = "ERROR";
-                        ResetEngine(10);
+                        ResetEngine(10, "ERROR");
                         break;
                     case LibAudio.HeartBeatType.NODEVICE:
                         text1.Text = "NO DEVICES";
@@ -141,9 +119,16 @@ namespace SDE
                         break;
                 }
 
-                if (bufferingCount == 5) ResetEngine(5);
-                if (bufferingCount == 10) Reboot();
+                if (bufferingCount == 60)
+                {
+                    Reboot();
+                }
 
+                if (bufferingCount  >= 5 && bufferingCount % 5 == 0)
+                {
+                    ResetEngine(5, "RESET");
+                }
+                
                 text3.Text = i2.ToString();
                 text4.Text = i3.ToString();
                 text5.Text = i4.ToString();
@@ -198,7 +183,7 @@ namespace SDE
                 if (startCounter == 0)
                 {
                     text1.Text = "STARTED";
-                    timer.Stop();
+                    startTimer.Stop();
                     engine = new LibAudio.WASAPIEngine();
 #if _WIN64
                     LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 0, 3);
@@ -219,13 +204,74 @@ namespace SDE
             }
         }
 
-        private void ResetEngine(uint counter)
+        private void TestSend(object sender, object e)
+        {
+            if (errorCount == 5) Reboot();
+            if (client.Messages() > 0)
+            {
+                ResetEngine(60, "SENDING");
+                SendTimer.Start();
+            }
+        }
+
+        private void Send(object sender, object e)
+        {
+            SendTimer.Stop();
+            try
+            {
+                Windows.Foundation.AsyncActionCompletedHandler handler = (Windows.Foundation.IAsyncAction asyncInfo, Windows.Foundation.AsyncStatus asyncStatus) =>
+                {
+                    var ignored = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+                    {
+                        switch (asyncStatus)
+                        {
+                            case Windows.Foundation.AsyncStatus.Completed:
+                                exception.Text = "Messages sent";
+                                errorCount = 0;
+                                if (startCounter > 2) startCounter = 2;
+                                break;
+                            case Windows.Foundation.AsyncStatus.Canceled: exception.Text = "Canceled " + asyncInfo.ErrorCode; break;
+                            case Windows.Foundation.AsyncStatus.Error:
+                                exception.Text = "Error: " + asyncInfo.ErrorCode;
+                                label0.Text = "Error";
+                                errorCount++;
+                                if (startCounter > 2) startCounter = 2;
+                                break;
+                        }
+                        activeTask = false;
+                    });
+                };
+
+                if (!activeTask)
+                {
+                    activeTask = client.SendMessagesAsync(handler);
+                    if (activeTask)
+                    {
+                        label0.Text = "Sending messages ...";
+                    }
+                    else
+                    {
+                        label0.Text = "No messages pending";
+                    }
+                }
+                else
+                {
+                    label0.Text = "Active task";
+                }
+            }
+            catch (Exception ex)
+            {
+                Error(ex.ToString());
+            }
+        }
+
+        private void ResetEngine(uint counter, string str)
         {
             engine.Finish();
             engine = null;
-            EmptyTexts("RESETTING");
+            EmptyTexts(str);
             startCounter = counter;
-            timer.Start();
+            startTimer.Start();
         }
 
         private void Reboot()
@@ -277,6 +323,7 @@ namespace SDE
             text7.Text = "";
             text8.Text = "";
             text9.Text = "";
+            exception.Text = "";
             canvas.Children.Clear();
         }
 

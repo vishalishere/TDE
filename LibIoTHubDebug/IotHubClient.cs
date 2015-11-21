@@ -11,16 +11,31 @@ namespace LibIoTHubDebug
     public sealed class IotHubClient
     {
         private Object thisLock = new Object();
+        private int msgCount = 0;
 
-        static DeviceClient _deviceClient;
         System.Collections.Generic.Queue<Message> queue;
         Task task = null;
 
         public IotHubClient()
         {
-            var auth = new DeviceAuthenticationWithRegistrySymmetricKey(AccessData.Access.DeviceID, AccessData.Access.DeviceKey);
-            _deviceClient = DeviceClient.Create(AccessData.Access.IoTHubUri, auth, TransportType.Http1);
             queue = new System.Collections.Generic.Queue<Message>();
+        }
+
+        public int Messages()
+        {
+            int count = 0;
+            lock(thisLock)
+            {
+                count = queue.Count;
+            }
+            return count;
+        }
+
+        public int Send()
+        {
+            int tmp = msgCount;
+            msgCount = 0;
+            return tmp;
         }
 
         public void AddMessage(int msg, int cc, int asdf, int peak, System.UInt64 threshold, System.UInt64 volume)
@@ -45,13 +60,23 @@ namespace LibIoTHubDebug
             }
         }
 
-        public void SendMessagesAsync(Windows.Foundation.AsyncActionCompletedHandler handler)
+        public bool SendMessagesAsync(Windows.Foundation.AsyncActionCompletedHandler handler)
         {
-            Func<Task> action = async () =>
+            int count = 0;
+            lock(thisLock)
             {
-                await SendMessagesInternalAsync(this, handler);
-            };
-            task = Task.Factory.StartNew(action);
+                count = queue.Count;
+            }
+            if (count > 0)
+            {
+                Func<Task> action = async () =>
+                {
+                    await SendMessagesInternalAsync(this, handler);
+                };
+                task = Task.Factory.StartNew(action);
+                return true;
+            }
+            else return false;
         }
 
         private static async Task SendMessagesInternalAsync(IotHubClient client, Windows.Foundation.AsyncActionCompletedHandler handler)
@@ -60,10 +85,13 @@ namespace LibIoTHubDebug
             lock (client.thisLock)
             {
                 tmp = new System.Collections.Generic.Queue<Message>(client.queue);
+                client.msgCount = client.queue.Count;
                 client.queue.Clear();
             }
+            var auth = new DeviceAuthenticationWithRegistrySymmetricKey(AccessData.Access.DeviceID, AccessData.Access.DeviceKey);
+            DeviceClient _deviceClient = DeviceClient.Create(AccessData.Access.IoTHubUri, auth, TransportType.Http1);
             Windows.Foundation.IAsyncAction ac = _deviceClient.SendEventBatchAsync(tmp);
-            ac.Completed += handler;
+            ac.Completed = handler;
             await ac;                
         }
     }

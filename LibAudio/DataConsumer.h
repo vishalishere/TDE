@@ -21,7 +21,7 @@ using namespace Windows::Storage;
 
 namespace LibAudio
 {
-	static Windows::Foundation::IAsyncAction^ WorkItem = nullptr;
+	static Windows::Foundation::IAsyncAction^ Task = nullptr;
 
 	public enum class HeartBeatType
 	{
@@ -163,7 +163,7 @@ namespace LibAudio
 		bool CalculateTDE(size_t pos, uint32 threshold);
 		void StoreData(String^ data);
 
-		void Worker();
+		void AudioTask();
 
 		size_t m_numberOfDevices;
 		DataCollector^ m_collector;
@@ -184,5 +184,7 @@ namespace LibAudio
 		uint32 m_dataRemovalCounter;
 
 		TDEParameters^ m_params;
+
+		Windows::System::Threading::ThreadPoolTimer ^ m_delayTimer;
 	};
 }

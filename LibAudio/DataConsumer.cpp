@@ -19,7 +19,8 @@ DataConsumer::DataConsumer(size_t nDevices, DataCollector^ collector, UIDelegate
 	m_packetCounter(0),
 	m_discontinuityCounter(0),
 	m_dataRemovalCounter(0),
-	m_params(parameters)
+	m_params(parameters),
+	m_delayTimer(nullptr)
 {
 	m_devices = std::vector<DeviceInfo>(m_numberOfDevices);
 	m_audioDataFirst = std::vector<AudioDataPacket*>(m_numberOfDevices, NULL);
@@ -37,12 +38,24 @@ DataConsumer::~DataConsumer()
 
 void DataConsumer::Start()
 {
-	Worker();
+	TimeSpan delay;
+	delay.Duration = 1000000; // 0.1 s	(10,000,000 ticks per second)
+
+	m_delayTimer = ThreadPoolTimer::CreatePeriodicTimer(
+		ref new TimerElapsedHandler([this](ThreadPoolTimer^ source)
+		{
+			if (Task == nullptr) AudioTask();
+		}
+	), delay);
 }
 
 void DataConsumer::Stop()
 {
-	if (WorkItem != nullptr) { WorkItem->Cancel(); }
+	if (m_delayTimer != nullptr)
+	{
+		m_delayTimer->Cancel();
+		m_delayTimer = nullptr;
+	}
 }
 
 HRESULT DataConsumer::Finish()
@@ -51,75 +64,73 @@ HRESULT DataConsumer::Finish()
 	return S_OK;
 }
 
-void DataConsumer::Worker()
+void DataConsumer::AudioTask()
 {
 	auto workItemDelegate = [this](Windows::Foundation::IAsyncAction^ action) 
 	{ 
-		while (1) {
-			bool error = false;
-			for (size_t i = 0; i < m_numberOfDevices; i++)
-			{
-				AudioDataPacket *first, *last;
-				size_t count;
+		bool error = false;
+
+		for (size_t i = 0; i < m_numberOfDevices; i++)
+		{
+			AudioDataPacket *first, *last;
+			size_t count;
 			
-				m_devices[i] = m_collector->RemoveData(i, &first, &last, &count, &error);
-				m_packetCounter += count;
+			m_devices[i] = m_collector->RemoveData(i, &first, &last, &count, &error);
+			m_packetCounter += count;
 
-				if (m_audioDataLast[i] != NULL)
-				{
-					m_audioDataLast[i]->SetNext(first);
-					if (last != NULL) m_audioDataLast[i] = last;
-				}
-				else
-				{
-					m_audioDataFirst[i] = first;
-					m_audioDataLast[i] = last;
-				}
+			if (m_audioDataLast[i] != NULL)
+			{
+				m_audioDataLast[i]->SetNext(first);
+				if (last != NULL) m_audioDataLast[i] = last;
 			}
-			if (error) HeartBeat(HeartBeatType::DEVICE_ERROR);
-			bool loop = true;
-			while(loop)
-			{ 
-				switch (HandlePackets())
-				{
-				case Status::ONLY_ONE_SAMPLE:
-					loop = false;
-					break;
-				case Status::EXCESS_DATA:
-				case Status::SILENCE:
-					m_dataRemovalCounter++;
-					break;
-				case Status::DISCONTINUITY:
-					FlushBuffer();
-					m_discontinuityCounter++;
-					break;
-				case Status::DATA_AVAILABLE:
-					loop = ProcessData();
-					break;
-				}
+			else
+			{
+				m_audioDataFirst[i] = first;
+				m_audioDataLast[i] = last;
 			}
-			HeartBeat(HeartBeatType::BUFFERING, 10000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter, 
-				0, m_devices[m_params->Device0()].GetPosition(), m_devices[m_params->Device1()].GetPosition());
-
+		}
+		if (error) HeartBeat(HeartBeatType::DEVICE_ERROR);
+		bool loop = true;
+		while(loop)
+		{ 
+			switch (HandlePackets())
+			{
+			case Status::ONLY_ONE_SAMPLE:
+				loop = false;
+				break;
+			case Status::EXCESS_DATA:
+			case Status::SILENCE:
+				m_dataRemovalCounter++;
+				break;
+			case Status::DISCONTINUITY:
+				FlushBuffer();
+				m_discontinuityCounter++;
+				break;
+			case Status::DATA_AVAILABLE:
+				loop = ProcessData();
+				break;
+			}
 			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
 		}
+		HeartBeat(HeartBeatType::BUFFERING, 10000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter, 
+			0, m_devices[m_params->Device0()].GetPosition(), m_devices[m_params->Device1()].GetPosition());
 	};
 
 	auto completionDelegate = [this](Windows::Foundation::IAsyncAction^ action, Windows::Foundation::AsyncStatus status)
 	{
 		switch (action->Status)
 		{
-		case Windows::Foundation::AsyncStatus::Started:		break;
-		case Windows::Foundation::AsyncStatus::Completed:	WorkItem = nullptr;	break;
-		case Windows::Foundation::AsyncStatus::Canceled:	WorkItem = nullptr;	break;
+		case Windows::Foundation::AsyncStatus::Completed:
+		case Windows::Foundation::AsyncStatus::Error:
+		case Windows::Foundation::AsyncStatus::Canceled: Task = nullptr;
 		}
 	};
 
 	auto workItemHandler = ref new Windows::System::Threading::WorkItemHandler(workItemDelegate);
 	auto completionHandler = ref new Windows::Foundation::AsyncActionCompletedHandler(completionDelegate, Platform::CallbackContext::Same);
 
-	WorkItem = Windows::System::Threading::ThreadPool::RunAsync(workItemHandler, Windows::System::Threading::WorkItemPriority::Low);
-	WorkItem->Completed = completionHandler;
+	Task = Windows::System::Threading::ThreadPool::RunAsync(workItemHandler, Windows::System::Threading::WorkItemPriority::Low);
+	Task->Completed = completionHandler;
 }
 
 DataConsumer::Status DataConsumer::HandlePackets()
@@ -308,19 +319,21 @@ void DataConsumer::AddData(size_t device, DWORD cbBytes, const BYTE* pData, UINT
 	UINT64 delta = pos2 - pos1;
 	double d = (double)delta / numPoints;
 
+	size_t sz = m_devices[device].GetChannels();
+
 	if (m_buffer[device].size() == 0)
-	{
-		for (size_t i = 0; i < m_devices[device].GetChannels(); i++)
+	{		
+		for (size_t ii = 0; ii < sz; ii++)
 		{
-			m_buffer[device].push_back(std::vector<TimeDelayEstimation::AudioDataItem>());
+			m_buffer[device].push_back(std::vector<TimeDelayEstimation::AudioDataItem>(2 * m_params->BufferSize()));
 		}
 	}
 	for (DWORD i = 0; i < numPoints; i++)
 	{
 		UINT64 time_delta = UINT64((double)i * d);
-		for (size_t j = 0; j < m_devices[device].GetChannels(); j++)
+		for (size_t j = 0; j < sz; j++)
 		{
-			TimeDelayEstimation::AudioDataItem item = { *pi16, pos1 + time_delta, i };
+			TimeDelayEstimation::AudioDataItem item(*pi16, pos1 + time_delta, i);
 			m_buffer[device][j].push_back(item);
 			pi16++;
 		}
@@ -389,7 +402,7 @@ void DataConsumer::HeartBeat(HeartBeatType status, int delta, int msg0, int msg1
 	ULONGLONG tick = GetTickCount64();
 	if (tick - m_tick > delta)
 	{
-		m_uiHandler(m_counter++, (int)status, msg0, msg1, msg2, msg3, msg4, msg5, 44100);
+		m_uiHandler(m_counter++, (int)status, msg0, msg1, msg2, msg3, msg4, msg5, 0);
 		m_tick = tick;
 		m_packetCounter = 0;
 		m_discontinuityCounter = 0;
