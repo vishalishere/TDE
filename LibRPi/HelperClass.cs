@@ -8,14 +8,14 @@ namespace LibRPi
 {
     public sealed class HelperClass
     {
-        public async void ShutdownComputer()
+        public async void Shutdown()
         {
             String URL = "http://localhost:8080/api/control/shutdown";
             System.Diagnostics.Debug.WriteLine(URL);
             StreamReader SR = await PostJsonStreamData(URL);
         }
 
-        public async void RebootComputer()
+        public async void Reboot()
         {
             String URL = "http://localhost:8080/api/control/reboot";
             System.Diagnostics.Debug.WriteLine(URL);
@@ -31,7 +31,7 @@ namespace LibRPi
             StreamReader SR = await PostJsonStreamData("http://localhost:8080/api/taskmanager/start?appid=" + appName64);
         }
 
-        private async Task<StreamReader> PostJsonStreamData(String URL)
+        private async Task<StreamReader> PostJsonStreamData(string URL)
         {
             HttpWebRequest wrGETURL = null;
             Stream objStream = null;
@@ -57,12 +57,12 @@ namespace LibRPi
             return objReader;
         }
 
-        private async Task<String> GetPackageRelativeId(String PackageName)
+        private async Task<string> GetPackageRelativeId(String PackageName)
         {
             return await GetPackageNamedName(PackageName, "PackageRelativeId");
         }
 
-        private async Task<String> GetPackageNamedName(String PackageName, String NamedName)
+        private async Task<string> GetPackageNamedName(string PackageName, string NamedName)
         {
             String PackageRelativeId = null;
             StreamReader SR = await GetJsonStreamData("http://localhost:8080/api/appx/installed");
@@ -94,7 +94,7 @@ namespace LibRPi
             return PackageRelativeId;
         }
 
-        private async Task<StreamReader> GetJsonStreamData(String URL)
+        private async Task<StreamReader> GetJsonStreamData(string URL)
         {
             HttpWebRequest wrGETURL = null;
             Stream objStream = null;

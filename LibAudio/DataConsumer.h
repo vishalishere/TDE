@@ -123,7 +123,7 @@ namespace LibAudio
 		Platform::String^ sampleFile;
 	};
 
-	public delegate void UIDelegate(uint32, int, int, int, int, int, UINT64, UINT64, uint32);
+	public delegate void UIDelegate(HeartBeatType, int, int, int, int, UINT64, UINT64, uint32, UINT64);
 
 	ref class DataConsumer sealed
 	{
@@ -175,8 +175,6 @@ namespace LibAudio
 		std::vector<std::vector<std::vector<TimeDelayEstimation::AudioDataItem>>> m_buffer;	
 
 		UIDelegate^ m_uiHandler;
-
-		uint32 m_counter;
 		ULONGLONG m_tick;
 
 		size_t m_packetCounter;
@@ -186,5 +184,12 @@ namespace LibAudio
 		TDEParameters^ m_params;
 
 		Windows::System::Threading::ThreadPoolTimer ^ m_delayTimer;
+
+		union timeunion {
+			FILETIME fileTime;
+			ULARGE_INTEGER ul;
+		};
+
+		timeunion m_beginTime;
 	};
 }

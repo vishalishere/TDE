@@ -10,15 +10,27 @@ namespace LibIoTHubDebug
 
     public sealed class IotHubClient
     {
+        private sealed class DataPoint
+        {
+            public LibAudio.HeartBeatType t;
+            public DateTime time;
+            public int cc;
+            public int asdf;
+            public int peak;
+            public ulong threshold;
+            public ulong volume;
+        }
+
+        private int MAX_MESSAGES = 100;
+
         private Object thisLock = new Object();
         private int msgCount = 0;
 
-        System.Collections.Generic.Queue<Message> queue;
+        System.Collections.Generic.Queue<DataPoint> queue = new System.Collections.Generic.Queue<DataPoint>();
         Task task = null;
 
         public IotHubClient()
         {
-            queue = new System.Collections.Generic.Queue<Message>();
         }
 
         public int Messages()
@@ -31,32 +43,36 @@ namespace LibIoTHubDebug
             return count;
         }
 
-        public int Send()
+        public int Sent()
         {
-            int tmp = msgCount;
-            msgCount = 0;
+            int tmp;
+            lock (thisLock)
+            {
+                for (int i = 0; i < msgCount; i++)
+                {
+                    queue.Dequeue();
+                }
+                tmp = msgCount;
+                msgCount = 0;
+            }    
             return tmp;
         }
 
-        public void AddMessage(int msg, int cc, int asdf, int peak, System.UInt64 threshold, System.UInt64 volume)
+        public void AddMessage(LibAudio.HeartBeatType t, int cc, int asdf, int peak, ulong threshold, ulong volume)
         {
-            var telemetryDataPoint = new
-            {
-                ID = AccessData.Access.DeviceID,
-                TIME = DateTime.UtcNow,
-                MSG = msg,
-                CC = cc,
-                ADSF = asdf,
-                PEAK = peak,
-                THRES = threshold,
-                VOL = volume
-            };
+            DataPoint p = new DataPoint();
+            p.time = DateTime.UtcNow;
+            p.t = t;
+            p.cc = cc;
+            p.asdf = asdf;
+            p.peak = peak;
+            p.threshold = threshold;
+            p.volume = volume;
 
-            var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
-            var message = new Message(Encoding.ASCII.GetBytes(messageString));
             lock (thisLock)
             {
-                queue.Enqueue(message);
+                if (queue.Count == MAX_MESSAGES) queue.Dequeue();
+                queue.Enqueue(p);
             }
         }
 
@@ -71,7 +87,36 @@ namespace LibIoTHubDebug
             {
                 Func<Task> action = async () =>
                 {
-                    await SendMessagesInternalAsync(this, handler);
+                    System.Collections.Generic.Queue<Message> q = new System.Collections.Generic.Queue<Message>();
+                    lock (thisLock)
+                    {
+                        foreach (DataPoint p in queue)
+                        {
+                            string s = HeartBeatText(p.t);
+                            var telemetryDataPoint = new
+                            {
+                                ID = AccessData.Access.DeviceID,
+                                TIME = p.time,
+                                MSG = s,
+                                CC = p.cc,
+                                ADSF = p.asdf,
+                                PEAK = p.peak,
+                                THRES = p.threshold,
+                                VOL = p.volume
+                            };
+                            var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
+                            var message = new Message(Encoding.ASCII.GetBytes(messageString));
+                            q.Enqueue(message);
+                        }
+                        msgCount = queue.Count;
+                    }
+                    var auth = new DeviceAuthenticationWithRegistrySymmetricKey(AccessData.Access.DeviceID, AccessData.Access.DeviceKey);
+                    DeviceClient deviceClient = DeviceClient.Create(AccessData.Access.IoTHubUri, auth, TransportType.Http1);
+                    await deviceClient.OpenAsync();
+                    Windows.Foundation.IAsyncAction a = deviceClient.SendEventBatchAsync(q);
+                    a.Completed = handler;
+                    await a;
+                    await deviceClient.CloseAsync();
                 };
                 task = Task.Factory.StartNew(action);
                 return true;
@@ -79,20 +124,18 @@ namespace LibIoTHubDebug
             else return false;
         }
 
-        private static async Task SendMessagesInternalAsync(IotHubClient client, Windows.Foundation.AsyncActionCompletedHandler handler)
+        public string HeartBeatText(LibAudio.HeartBeatType t)
         {
-            System.Collections.Generic.Queue<Message> tmp;
-            lock (client.thisLock)
+            switch (t)
             {
-                tmp = new System.Collections.Generic.Queue<Message>(client.queue);
-                client.msgCount = client.queue.Count;
-                client.queue.Clear();
+                case LibAudio.HeartBeatType.DATA: return "DATA";
+                case LibAudio.HeartBeatType.INVALID: return "INVALID";
+                case LibAudio.HeartBeatType.SILENCE: return "SILENCE";
+                case LibAudio.HeartBeatType.BUFFERING: return "BUFFERING";
+                case LibAudio.HeartBeatType.DEVICE_ERROR: return "ERROR";
+                case LibAudio.HeartBeatType.NODEVICE: return "NO DEVICES";
+                default: return "";
             }
-            var auth = new DeviceAuthenticationWithRegistrySymmetricKey(AccessData.Access.DeviceID, AccessData.Access.DeviceKey);
-            DeviceClient _deviceClient = DeviceClient.Create(AccessData.Access.IoTHubUri, auth, TransportType.Http1);
-            Windows.Foundation.IAsyncAction ac = _deviceClient.SendEventBatchAsync(tmp);
-            ac.Completed = handler;
-            await ac;                
         }
     }
 }

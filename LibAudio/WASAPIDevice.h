@@ -16,6 +16,7 @@ namespace LibAudio
 	public:
 		WASAPIDevice();
 		void InitCaptureDevice(size_t i, DataCollector^ collector);
+
 		property String^ ID;
 		property String^ Name;
 		property size_t Number;

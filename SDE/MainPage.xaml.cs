@@ -1,11 +1,12 @@
-﻿using System;
+﻿#define _PI2_1
+
+using System;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Shapes;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
-
-// The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
+using System.Threading.Tasks;
 
 namespace SDE
 {
@@ -16,33 +17,33 @@ namespace SDE
     {
         private LibAudio.WASAPIEngine engine;
         private LibIoTHubDebug.IotHubClient client = new LibIoTHubDebug.IotHubClient();
+
         private DispatcherTimer startTimer = new DispatcherTimer();
-        private DispatcherTimer SendTimer = new DispatcherTimer();
-        private DispatcherTimer TestTimer = new DispatcherTimer();
+        private DispatcherTimer sendTimer = new DispatcherTimer();
+        private DispatcherTimer testTimer = new DispatcherTimer();
 
         private uint bufferingCount = 0;
         private uint startCounter = 10;
         private uint sampleCount = 0;
         private uint messageCount = 0;
         private uint errorCount = 0;
+        private uint count = 0;
+
         private bool activeTask = false;
+        private bool reboot = false;
 
         public MainPage()
         {
             this.InitializeComponent();
 
-            TimeSpan ts = new TimeSpan(600000000); // 60 s
+            testTimer.Interval = new TimeSpan(0, 1, 0); // 1 minute
+            testTimer.Tick += TestSend;
+            testTimer.Start();
 
-            TestTimer.Interval = ts;
-            TestTimer.Tick += TestSend;
-            TestTimer.Start();
-
-            ts = new TimeSpan(50000000); // 5 s
-            SendTimer.Interval = ts;
-            SendTimer.Tick += Send;
-
-            ts = new TimeSpan(10000000); // 1 s
-            startTimer.Interval = ts;
+            sendTimer.Interval = new TimeSpan(0, 0, 5); // 5 s
+            sendTimer.Tick += Send;
+             
+            startTimer.Interval = new TimeSpan(0, 0, 1); // 1 s
             startTimer.Tick += Tick;
             startTimer.Start();
 
@@ -55,21 +56,21 @@ namespace SDE
             engine.Finish();
         }
 
-        private void ThreadDelegate(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
+        private void ThreadDelegate(LibAudio.HeartBeatType t, int i0, int i1, int i2, int i3, ulong i4, ulong i5, uint i6, ulong i7)
         {
             var ignored1 = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
             {
-                UpdateUI(i0, i1, i2, i3, i4, i5, i6, i7, i8);
+                UpdateUI(t, i0, i1, i2, i3, i4, i5, i6, i7);
             });
 
             var ignored2 = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
             {
                 try
                 {
-                    if ((LibAudio.HeartBeatType)i1 == LibAudio.HeartBeatType.DATA || messageCount == 100)
+                    if (t == LibAudio.HeartBeatType.DATA || messageCount == 10)
                     {
                         messageCount = 0;
-                        client.AddMessage(i1, i2, i3, i4, i6, i7);
+                        client.AddMessage(t, i0, i1, i2, i4, i5);
                         label0.Text = "Message added";
                     }
                     else
@@ -80,82 +81,72 @@ namespace SDE
                 }
                 catch (Exception ex)
                 {
-                    Error(ex.ToString());
+                    Error("1: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
                 }
             });
         }
 
-        private void UpdateUI(System.UInt32 i0, int i1, int i2, int i3, int i4, int i5, System.UInt64 i6, System.UInt64 i7, System.UInt32 i8)
+        private void UpdateUI(LibAudio.HeartBeatType t, int i0, int i1, int i2, int i3, ulong i4, ulong i5, uint i6, ulong i7)
         {
             try
             {
-                text2.Text = i0.ToString();
-                SetLabels((LibAudio.HeartBeatType)i1);
+                text2.Text =(count++).ToString();
+                text3.Text = i0.ToString();
+                text4.Text = i1.ToString();
+                text5.Text = i2.ToString();
+                text6.Text = i3.ToString();
+                text7.Text = i4.ToString();
+                text8.Text = i5.ToString();
+                text0.Text = i7.ToString();
 
-                switch ((LibAudio.HeartBeatType)i1)
+                SetLabels(t);
+                text1.Text = client.HeartBeatText(t);
+
+                switch (t)
                 {
                     case LibAudio.HeartBeatType.DATA:
-                        text1.Text = "DATA";
-                        bufferingCount = 0;
-                        break;
-                    case LibAudio.HeartBeatType.INVALID:
-                        text1.Text = "INVALID";
-                        break;
                     case LibAudio.HeartBeatType.SILENCE:
-                        text1.Text = "SILENCE";
+                        text8.Text = Windows.System.MemoryManager.AppMemoryUsage.ToString();
                         bufferingCount = 0;
                         break;
                     case LibAudio.HeartBeatType.BUFFERING:
-                        text1.Text = "BUFFERING";
                         bufferingCount++;
                         break;
                     case LibAudio.HeartBeatType.DEVICE_ERROR:
-                        text1.Text = "ERROR";
                         ResetEngine(10, "ERROR");
-                        break;
+                        return;
                     case LibAudio.HeartBeatType.NODEVICE:
-                        text1.Text = "NO DEVICES";
-                        Reboot();
-                        break;
+                        ResetEngine(10, "REBOOTING", true);
+                        return;
                 }
 
                 if (bufferingCount == 60)
                 {
-                    Reboot();
+                    ResetEngine(10, "REBOOTING", true);
+                    return;
                 }
-
-                if (bufferingCount  >= 5 && bufferingCount % 5 == 0)
+                if (bufferingCount >= 5 && bufferingCount % 5 == 0)
                 {
-                    ResetEngine(5, "RESET");
+                    ResetEngine(10, "RESET");
+                    return;
                 }
                 
-                text3.Text = i2.ToString();
-                text4.Text = i3.ToString();
-                text5.Text = i4.ToString();
-                text6.Text = i5.ToString();
-                text7.Text = i6.ToString();
-                text8.Text = i7.ToString();
-
-                if ((LibAudio.HeartBeatType)i1 != LibAudio.HeartBeatType.BUFFERING)
+                if (t != LibAudio.HeartBeatType.BUFFERING) canvas.Children.Clear();
+                if (t == LibAudio.HeartBeatType.DATA)
                 {
-                    canvas.Children.Clear();
-                }
-
-                if ((LibAudio.HeartBeatType)i1 == LibAudio.HeartBeatType.DATA)
-                {
-                    System.UInt64 vol = i6 / 20;
+                    ulong vol = i4 / 20;
                     if (vol > 800) vol = 800;
 
-                    Direction(i8, 0.4, -1 * i2, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Red), 4);
-                    Direction(i8, 0.4, -1 * i3, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Green), 2);
-                    Direction(i8, 0.4, -1 * i4, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Blue), 1);
+                    Direction(i6, 0.4, -1 * i0, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Red), 4);
+                    Direction(i6, 0.4, -1 * i1, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Green), 2);
+                    Direction(i6, 0.4, -1 * i2, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Blue), 1);
                     sampleCount++;       
                 }
                 text9.Text = sampleCount.ToString();
             }
             catch (Exception ex)
             {
-                Error(ex.Message);
+                Error("2: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
             }
         }
 
@@ -176,21 +167,43 @@ namespace SDE
             canvas.Children.Add(line);
         }
 
-        private async void Tick(Object sender, Object e)
+        private async void Tick(object sender, object e)
         {
             try
             {
-                if (startCounter == 0)
+                if (startCounter == 10)
                 {
-                    text1.Text = "STARTED";
-                    startTimer.Stop();
-                    engine = new LibAudio.WASAPIEngine();
+                    DeviceStatus();
+                    text2.Text = startCounter.ToString();
+                    startCounter--;
+                }
+                else if (startCounter == 0)
+                {
+                    if (reboot)
+                    {
+                        LibRPi.HelperClass hc = new LibRPi.HelperClass();
+                        hc.Reboot();
+                    }
+                    else
+                    {
+                        text1.Text = "STARTED";
+                        exception.Text = "";
+                        exception.FontSize = 14;
+                        startTimer.Stop();
+                        engine = new LibAudio.WASAPIEngine();
 #if _WIN64
-                    LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 0, 3);
+                        LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 0, 3);
 #else
-                    LibAudio.TDEParameters param = new LibAudio.TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
+#if _PI2_1
+                        LibAudio.TDEParameters param = new LibAudio.TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
+#elif _PI2_2
+                        LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 3, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
+#else
+                        LibAudio.TDEParameters param = new LibAudio.TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
 #endif
-                    await engine.InitializeAsync(ThreadDelegate, param);
+#endif
+                        await engine.InitializeAsync(ThreadDelegate, param);
+                    }
                 }
                 else
                 {
@@ -200,23 +213,23 @@ namespace SDE
             }
             catch (Exception ex)
             {
-                Error(ex.Message);
+                Error("3: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
             }
         }
 
         private void TestSend(object sender, object e)
         {
-            if (errorCount == 5) Reboot();
+            if (errorCount == 5) ResetEngine(10, "REBOOTING", true);
             if (client.Messages() > 0)
             {
                 ResetEngine(60, "SENDING");
-                SendTimer.Start();
+                sendTimer.Start();
             }
         }
 
         private void Send(object sender, object e)
         {
-            SendTimer.Stop();
+            sendTimer.Stop();
             try
             {
                 Windows.Foundation.AsyncActionCompletedHandler handler = (Windows.Foundation.IAsyncAction asyncInfo, Windows.Foundation.AsyncStatus asyncStatus) =>
@@ -226,13 +239,13 @@ namespace SDE
                         switch (asyncStatus)
                         {
                             case Windows.Foundation.AsyncStatus.Completed:
-                                exception.Text = "Messages sent";
+                                exception.Text = client.Sent() + " Messages sent";
                                 errorCount = 0;
                                 if (startCounter > 2) startCounter = 2;
                                 break;
                             case Windows.Foundation.AsyncStatus.Canceled: exception.Text = "Canceled " + asyncInfo.ErrorCode; break;
                             case Windows.Foundation.AsyncStatus.Error:
-                                exception.Text = "Error: " + asyncInfo.ErrorCode;
+                                exception.Text = "0: Error: " + asyncInfo.ErrorCode;
                                 label0.Text = "Error";
                                 errorCount++;
                                 if (startCounter > 2) startCounter = 2;
@@ -245,42 +258,25 @@ namespace SDE
                 if (!activeTask)
                 {
                     activeTask = client.SendMessagesAsync(handler);
-                    if (activeTask)
-                    {
-                        label0.Text = "Sending messages ...";
-                    }
-                    else
-                    {
-                        label0.Text = "No messages pending";
-                    }
+                    label0.Text = activeTask ? "Sending messages ..." : "No messages pending";
                 }
-                else
-                {
-                    label0.Text = "Active task";
-                }
+                else label0.Text = "Active task";
+
             }
             catch (Exception ex)
             {
-                Error(ex.ToString());
+                Error("4: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
             }
         }
 
-        private void ResetEngine(uint counter, string str)
+        private void ResetEngine(uint counter, string str, bool boot = false)
         {
-            engine.Finish();
+            if (engine != null) engine.Finish();
             engine = null;
             EmptyTexts(str);
+            reboot = boot;
             startCounter = counter;
             startTimer.Start();
-        }
-
-        private void Reboot()
-        {
-            engine.Finish();
-            engine = null;
-            EmptyTexts("REBOOTING");
-            LibRPi.HelperClass hc = new LibRPi.HelperClass();
-            hc.RebootComputer();
         }
 
         private void Error(string err)
@@ -327,11 +323,11 @@ namespace SDE
             canvas.Children.Clear();
         }
 
-        private void SetLabels(LibAudio.HeartBeatType type)
+        private void SetLabels(LibAudio.HeartBeatType t)
         {
             label1.Text = "STATUS";
 
-            switch (type)
+            switch (t)
             {
                 case LibAudio.HeartBeatType.INVALID:
                 case LibAudio.HeartBeatType.DEVICE_ERROR:
@@ -373,6 +369,27 @@ namespace SDE
                         break;
                     }
             }
+        }
+
+        async void DeviceStatus()
+        {
+            string s = "";
+            var dis = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync();
+            foreach (var item in dis)
+            {
+                object o1, o2;
+                System.Collections.Generic.IReadOnlyDictionary<string,object> p = item.Properties;
+                p.TryGetValue("System.ItemNameDisplay", out o1);
+                p.TryGetValue("System.Devices.InterfaceEnabled", out o2);
+                s += o1.ToString() + " " + o2.ToString() + "\n";
+                //foreach (var prop in p)
+                //{
+                //    s += prop.Key != null ? prop.Key.ToString() + " : " : "";
+                //    s += prop.Value != null ? prop.Value.ToString() + "\n" : "\n";
+                //}
+            }
+            exception.FontSize = 10;
+            exception.Text = s;
         }
     }
 }

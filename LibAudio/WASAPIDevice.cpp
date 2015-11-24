@@ -10,6 +10,11 @@ WASAPIDevice::WASAPIDevice()
 void WASAPIDevice::InitCaptureDevice(size_t id, DataCollector^ collector)
 {
 	Number = id;
+	if (Capture)
+	{
+		Capture = nullptr;
+	}
+
 	Capture = Make<WASAPICapture>();
 
 	StateChangedEvent = Capture->GetDeviceStateEvent();

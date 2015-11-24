@@ -75,7 +75,7 @@ IAsyncAction^ WASAPIEngine::InitializeAsync(UIDelegate^ func, TDEParameters^ par
 				m_consumer = ref new DataConsumer(m_deviceList.size(), m_collector, func, params);
 				m_consumer->Start();
 			}
-			else func(0, int(LibAudio::HeartBeatType::NODEVICE),0,0,0,0,0,0,0);
+			else func(LibAudio::HeartBeatType::NODEVICE,0,0,0,0,0,0,0,0);
 		});
 	});
 }

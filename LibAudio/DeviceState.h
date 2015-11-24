@@ -81,8 +81,7 @@ namespace LibAudio
             if (m_DeviceState != newState)
             {
                 m_DeviceState = newState;
-
-                if (FireEvent)
+                if (FireEvent) 
                 {
                     DeviceStateChangedEventArgs^ e = ref new DeviceStateChangedEventArgs( m_DeviceState, hr );
                     StateChangedEvent( this, e );
@@ -91,7 +90,7 @@ namespace LibAudio
         };
 
     public:
-        static event DeviceStateChangedHandler^    StateChangedEvent;
+        event DeviceStateChangedHandler^    StateChangedEvent;
 
     private:
         DeviceState     m_DeviceState;
