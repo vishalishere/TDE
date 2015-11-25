@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Net;
 using Windows.Data.Json;
+using Windows.ApplicationModel.Core;
 
 namespace LibRPi
 {
@@ -20,6 +21,7 @@ namespace LibRPi
             String URL = "http://localhost:8080/api/control/reboot";
             System.Diagnostics.Debug.WriteLine(URL);
             StreamReader SR = await PostJsonStreamData(URL);
+            CoreApplication.Exit();
         }
 
         private async void StartApp(string appName)

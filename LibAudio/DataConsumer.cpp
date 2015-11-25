@@ -73,56 +73,52 @@ void DataConsumer::AudioTask()
 {
 	auto workItemDelegate = [this](Windows::Foundation::IAsyncAction^ action) 
 	{ 
-		//while (true)
-		//{
-			GetSystemTimeAsFileTime(&m_beginTime.fileTime);
-			bool error = false;
+		bool error = false;
 
-			for (size_t i = 0; i < m_numberOfDevices; i++)
+		for (size_t i = 0; i < m_numberOfDevices; i++)
+		{
+			AudioDataPacket *first, *last;
+			size_t count;
+
+			m_devices[i] = m_collector->RemoveData(i, &first, &last, &count, &error);
+			m_packetCounter += count;
+
+			if (m_audioDataLast[i] != NULL)
 			{
-				AudioDataPacket *first, *last;
-				size_t count;
-
-				m_devices[i] = m_collector->RemoveData(i, &first, &last, &count, &error);
-				m_packetCounter += count;
-
-				if (m_audioDataLast[i] != NULL)
-				{
-					m_audioDataLast[i]->SetNext(first);
-					if (last != NULL) m_audioDataLast[i] = last;
-				}
-				else
-				{
-					m_audioDataFirst[i] = first;
-					m_audioDataLast[i] = last;
-				}
+				m_audioDataLast[i]->SetNext(first);
+				if (last != NULL) m_audioDataLast[i] = last;
 			}
-			if (error) HeartBeat(HeartBeatType::DEVICE_ERROR);
-			bool loop = true;
-			while (loop)
+			else
 			{
-				switch (HandlePackets())
-				{
-				case Status::ONLY_ONE_SAMPLE:
-					loop = false;
-					break;
-				case Status::EXCESS_DATA:
-				case Status::SILENCE:
-					m_dataRemovalCounter++;
-					break;
-				case Status::DISCONTINUITY:
-					FlushBuffer();
-					m_discontinuityCounter++;
-					break;
-				case Status::DATA_AVAILABLE:
-					loop = ProcessData();
-					break;
-				}
-				if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
+				m_audioDataFirst[i] = first;
+				m_audioDataLast[i] = last;
 			}
-			HeartBeat(HeartBeatType::BUFFERING, 10000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter,
-				0, m_devices[m_params->Device0()].GetPosition(), m_devices[m_params->Device1()].GetPosition());
-		//}
+		}
+		if (error) HeartBeat(HeartBeatType::DEVICE_ERROR);
+		bool loop = true;
+		while (loop)
+		{
+			switch (HandlePackets())
+			{
+			case Status::ONLY_ONE_SAMPLE:
+				loop = false;
+				break;
+			case Status::EXCESS_DATA:
+			case Status::SILENCE:
+				m_dataRemovalCounter++;
+				break;
+			case Status::DISCONTINUITY:
+				FlushBuffer();
+				m_discontinuityCounter++;
+				break;
+			case Status::DATA_AVAILABLE:
+				loop = ProcessData();
+				break;
+			}
+			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
+		}
+		HeartBeat(HeartBeatType::BUFFERING, 10000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter,
+			0, m_devices[m_params->Device0()].GetPosition(), m_devices[m_params->Device1()].GetPosition());
 	};
 
 	auto completionDelegate = [this](Windows::Foundation::IAsyncAction^ action, Windows::Foundation::AsyncStatus status)
@@ -374,10 +370,7 @@ bool DataConsumer::CalculateTDE(size_t pos, uint32 threshold)
 	int delay2 = tde.FindDelay(TimeDelayEstimation::Algoritm::ASDF);
 	int delay3 = tde.FindDelay(TimeDelayEstimation::Algoritm::PEAK);
 
-	timeunion endTime;
-	GetSystemTimeAsFileTime(&endTime.fileTime);
-	int64 delta = (endTime.ul.QuadPart - m_beginTime.ul.QuadPart) / 10;
-	m_uiHandler(HeartBeatType::DATA, delay1, delay2, delay3, (int)align, threshold, volume, m_devices[m_params->Device0()].GetSamplesPerSec(), delta);
+	m_uiHandler(HeartBeatType::DATA, delay1, delay2, delay3, (int)align, threshold, volume, m_devices[m_params->Device0()].GetSamplesPerSec());
 	
 	if (m_params->StoreSample())
 	{
@@ -414,11 +407,7 @@ void DataConsumer::HeartBeat(HeartBeatType status, int delta, int msg0, int msg1
 	ULONGLONG tick = GetTickCount64();
 	if (tick - m_tick > delta)
 	{
-		timeunion endTime;
-		GetSystemTimeAsFileTime(&endTime.fileTime);
-		int64 delta = (endTime.ul.QuadPart - m_beginTime.ul.QuadPart) / 10;
-
-		m_uiHandler(status, msg0, msg1, msg2, msg3, msg4, msg5, 0, delta);
+		m_uiHandler(status, msg0, msg1, msg2, msg3, msg4, msg5, 0);
 		m_tick = tick;
 		m_packetCounter = 0;
 		m_discontinuityCounter = 0;

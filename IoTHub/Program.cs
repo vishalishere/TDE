@@ -11,10 +11,12 @@ namespace IoTHub
 {
     class Program
     {
+#if CREATE_NEW_DEVICE
         static RegistryManager registryManager;
-       
+#else
         static string iotHubD2cEndpoint = "messages/events";
         static EventHubClient eventHubClient;
+#endif
 
         static void Main(string[] args)
         {
@@ -30,25 +32,17 @@ namespace IoTHub
 
             foreach (string partition in d2cPartitions)
             {
-                ReceiveMessagesFromDeviceAsync(partition);
+                Func<Task> action = async () =>
+                {
+                    await ReceiveMessagesFromDeviceAsync(partition);
+                };
+                Task.Factory.StartNew(action);
             }
             Console.ReadLine();
 #endif
         }
 
-        private async static Task ReceiveMessagesFromDeviceAsync(string partition)
-        {
-            var eventHubReceiver = eventHubClient.GetDefaultConsumerGroup().CreateReceiver(partition, DateTime.Now);
-            while (true)
-            {
-                EventData eventData = await eventHubReceiver.ReceiveAsync();
-                if (eventData == null) continue;
-
-                string data = Encoding.UTF8.GetString(eventData.GetBytes());
-                Console.WriteLine(string.Format("Message: '{0}'", data));
-            }
-        }
-
+#if CREATE_NEW_DEVICE
         private async static Task AddDeviceAsync()
         {
             Device device;
@@ -62,5 +56,19 @@ namespace IoTHub
             }
             Console.WriteLine("Generated device key: {0}", device.Authentication.SymmetricKey.PrimaryKey);
         }
+#else
+        private async static Task ReceiveMessagesFromDeviceAsync(string partition)
+        {
+            var eventHubReceiver = eventHubClient.GetDefaultConsumerGroup().CreateReceiver(partition, DateTime.Now);
+            while (true)
+            {
+                EventData eventData = await eventHubReceiver.ReceiveAsync();
+                if (eventData == null) continue;
+
+                string data = Encoding.UTF8.GetString(eventData.GetBytes());
+                Console.WriteLine(string.Format("Message: '{0}'", data));
+            }
+        }
+#endif
     }
 }

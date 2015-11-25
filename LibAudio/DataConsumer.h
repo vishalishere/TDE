@@ -123,7 +123,7 @@ namespace LibAudio
 		Platform::String^ sampleFile;
 	};
 
-	public delegate void UIDelegate(HeartBeatType, int, int, int, int, UINT64, UINT64, uint32, UINT64);
+	public delegate void UIDelegate(HeartBeatType, int, int, int, int, UINT64, UINT64, uint32);
 
 	ref class DataConsumer sealed
 	{
@@ -184,12 +184,5 @@ namespace LibAudio
 		TDEParameters^ m_params;
 
 		Windows::System::Threading::ThreadPoolTimer ^ m_delayTimer;
-
-		union timeunion {
-			FILETIME fileTime;
-			ULARGE_INTEGER ul;
-		};
-
-		timeunion m_beginTime;
 	};
 }

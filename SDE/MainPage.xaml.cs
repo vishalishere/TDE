@@ -1,25 +1,30 @@
 ﻿#define _PI2_1
 
 using System;
+using Windows.System;
+using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Shapes;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
-using Windows.ApplicationModel.Core;
 using Windows.Devices.WiFi;
+using Windows.Devices.Enumeration;
 using Windows.Foundation;
+using Windows.Security.Credentials;
+
+using AccessData;
+using LibAudio;
 
 namespace SDE
 {
     public sealed partial class MainPage : Page
     {
-        WiFiAdapter wifi;
-
+        WiFiAdapter wifi = null;
 #if _DUMMY
         private DispatcherTimer dummyTimer = null;
 #else
-        private LibAudio.WASAPIEngine engine;
+        private WASAPIEngine engine;
 #endif
         private LibIoTHubDebug.IotHubClient client = new LibIoTHubDebug.IotHubClient();
 
@@ -31,10 +36,8 @@ namespace SDE
         private uint startCounter = 10;
         private uint sampleCount = 0;
         private uint messageCount = 0;
-        private uint errorCount = 0;
         private uint count = 0;
 
-        private bool activeTask = false;
         private bool reboot = false;
 
         public MainPage()
@@ -45,14 +48,14 @@ namespace SDE
             testTimer.Tick += TestSend;
             testTimer.Start();
 
-            sendTimer.Interval = new TimeSpan(0, 0, 15); 
+            sendTimer.Interval = new TimeSpan(0, 0, 10); 
             sendTimer.Tick += Send;
              
             startTimer.Interval = new TimeSpan(0, 0, 1);
             startTimer.Tick += Tick;
             startTimer.Start();
 
-            SetLabels(LibAudio.HeartBeatType.INVALID);
+            SetLabels(HeartBeatType.INVALID);
             text1.Text = "STARTING";
         }
 
@@ -64,18 +67,18 @@ namespace SDE
 #endif
         }
 
-        private void ThreadDelegate(LibAudio.HeartBeatType t, int i0, int i1, int i2, int i3, ulong i4, ulong i5, uint i6, ulong i7)
+        private void ThreadDelegate(HeartBeatType t, int i0, int i1, int i2, int i3, ulong i4, ulong i5, uint i6)
         {
             var ignored1 = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
             {
-                UpdateUI(t, i0, i1, i2, i3, i4, i5, i6, i7);
+                UpdateUI(t, i0, i1, i2, i3, i4, i5, i6);
             });
 
             var ignored2 = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
             {
                 try
                 {
-                    if (t == LibAudio.HeartBeatType.DATA || messageCount == 10)
+                    if (t == HeartBeatType.DATA || messageCount == 10)
                     {
                         messageCount = 0;
                         client.AddMessage(t, i0, i1, i2, i4, i5);
@@ -94,38 +97,37 @@ namespace SDE
             });
         }
 
-        private void UpdateUI(LibAudio.HeartBeatType t, int i0, int i1, int i2, int i3, ulong i4, ulong i5, uint i6, ulong i7)
+        private void UpdateUI(HeartBeatType t, int i0, int i1, int i2, int i3, ulong i4, ulong i5, uint i6)
         {
             try
             {
-                text2.Text =(count++).ToString();
-                text3.Text = i0.ToString();
-                text4.Text = i1.ToString();
-                text5.Text = i2.ToString();
-                text6.Text = i3.ToString();
-                text7.Text = i4.ToString();
-                text8.Text = i5.ToString();
-                text0.Text = i7.ToString();
-
                 SetLabels(t);
                 text1.Text = client.HeartBeatText(t);
+                text2.Text =(count++).ToString();
+
+                text3.Text = t == HeartBeatType.SILENCE ? "" : i0.ToString();
+                text4.Text = t == HeartBeatType.SILENCE ? "" : i1.ToString();
+                text5.Text = t == HeartBeatType.SILENCE ? "" : i2.ToString();
+                text6.Text = (t == HeartBeatType.SILENCE || t == HeartBeatType.BUFFERING) ? "" : i3.ToString();
+                text7.Text = t == HeartBeatType.SILENCE ? "" : i4.ToString();
+                text8.Text = t == HeartBeatType.SILENCE ? "" : i5.ToString();          
 
                 switch (t)
                 {
-                    case LibAudio.HeartBeatType.DATA:
+                    case HeartBeatType.DATA:
                         bufferingCount = 0;
                         break;
-                    case LibAudio.HeartBeatType.SILENCE:
-                        text8.Text = Windows.System.MemoryManager.AppMemoryUsage.ToString();
+                    case HeartBeatType.SILENCE:
+                        text8.Text = MemoryManager.AppMemoryUsage.ToString();
                         bufferingCount = 0;
                         break;
-                    case LibAudio.HeartBeatType.BUFFERING:
+                    case HeartBeatType.BUFFERING:
                         bufferingCount++;
                         break;
-                    case LibAudio.HeartBeatType.DEVICE_ERROR:
+                    case HeartBeatType.DEVICE_ERROR:
                         ResetEngine(10, "ERROR");
                         return;
-                    case LibAudio.HeartBeatType.NODEVICE:
+                    case HeartBeatType.NODEVICE:
                         ResetEngine(10, "REBOOTING", true);
                         return;
                 }
@@ -141,15 +143,15 @@ namespace SDE
                     return;
                 }
                 
-                if (t != LibAudio.HeartBeatType.BUFFERING) canvas.Children.Clear();
-                if (t == LibAudio.HeartBeatType.DATA)
+                if (t != HeartBeatType.BUFFERING) canvas.Children.Clear();
+                if (t == HeartBeatType.DATA)
                 {
                     ulong vol = i4 / 20;
                     if (vol > 800) vol = 800;
 
-                    Direction(i6, 0.4, -1 * i0, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Red), 4);
-                    Direction(i6, 0.4, -1 * i1, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Green), 2);
-                    Direction(i6, 0.4, -1 * i2, 800, (int)vol, new SolidColorBrush(Windows.UI.Colors.Blue), 1);
+                    SoundDirection(i6, 0.4, -1 * i0, 800, (int)vol, new SolidColorBrush(Colors.Red), 4);
+                    SoundDirection(i6, 0.4, -1 * i1, 800, (int)vol, new SolidColorBrush(Colors.Green), 2);
+                    SoundDirection(i6, 0.4, -1 * i2, 800, (int)vol, new SolidColorBrush(Colors.Blue), 1);
                     sampleCount++;       
                 }
                 text9.Text = sampleCount.ToString();
@@ -160,7 +162,7 @@ namespace SDE
             }
         }
 
-        void Direction(double rate, double dist, int delay, int x, int length, SolidColorBrush color, int thickness)
+        void SoundDirection(double rate, double dist, int delay, int x, int length, SolidColorBrush color, int thickness)
         {
             double val = (((double)delay / rate) * 343.2) / dist;
             if (val > 1) val = 1;
@@ -193,7 +195,6 @@ namespace SDE
                     {
                         LibRPi.HelperClass hc = new LibRPi.HelperClass();
                         hc.Reboot();
-                        CoreApplication.Exit();
                     }
                     else
                     {
@@ -207,20 +208,20 @@ namespace SDE
                         dummyTimer.Interval = new TimeSpan(0, 0, 1); // 1 s
                         dummyTimer.Tick += (object ss, object ee) =>
                         {
-                            ThreadDelegate(LibAudio.HeartBeatType.DATA, 5, 5, 5, 0, 0, Windows.System.MemoryManager.AppMemoryUsage, 44100, 0);
+                            ThreadDelegate(HeartBeatType.DATA, 5, 5, 5, 0, 0, MemoryManager.AppMemoryUsage, 44100, 0);
                         };
                         dummyTimer.Start();
 #else
-                        engine = new LibAudio.WASAPIEngine();
+                        engine = new WASAPIEngine();
 #if _WIN64
-                        LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 0, 3);
+                        TDEParameters param = new TDEParameters(1, 0, 0, 0, 3);
 #else
 #if _PI2_1
-                        LibAudio.TDEParameters param = new LibAudio.TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
+                        TDEParameters param = new TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 1000, 32000, -60, false, "");
 #elif _PI2_2
-                        LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 3, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
+                        TDEParameters param = new TDEParameters(1, 0, 0, 3, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
 #else
-                        LibAudio.TDEParameters param = new LibAudio.TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
+                        TDEParameters param = new TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
 #endif
 #endif
                         await engine.InitializeAsync(ThreadDelegate, param);
@@ -231,7 +232,6 @@ namespace SDE
                 {
                     text2.Text = startCounter.ToString();
                     startCounter--;
-                    GC.Collect();
                 }
             }
             catch (Exception ex)
@@ -242,23 +242,21 @@ namespace SDE
 
         private void TestSend(object sender, object e)
         {
-            if (errorCount == 5) ResetEngine(10, "REBOOTING", true);
             if (client.Messages() > 0)
             {
                 ResetEngine(120, "SENDING");
                 sendTimer.Start();
-                wifi?.Disconnect();
+                testTimer.Stop();
             }
         }
 
         private async void Send(object sender, object e)
         {
             sendTimer.Stop();
-
             var access = await WiFiAdapter.RequestAccessAsync();
             if (access == WiFiAccessStatus.Allowed)
             {
-                var wifiDevices = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(WiFiAdapter.GetDeviceSelector());
+                var wifiDevices = await DeviceInformation.FindAllAsync(WiFiAdapter.GetDeviceSelector());
                 if (wifiDevices?.Count > 0)
                 {
                     wifi = await WiFiAdapter.FromIdAsync(wifiDevices[0].Id);
@@ -266,10 +264,10 @@ namespace SDE
 
                     foreach (var network in wifi.NetworkReport.AvailableNetworks)
                     {
-                        if (network.Ssid == AccessData.Access.Ssid)
+                        if (network.Ssid == Access.Ssid)
                         {
-                            var passwordCredential = new Windows.Security.Credentials.PasswordCredential();
-                            passwordCredential.Password = AccessData.Access.Wifi_Password;
+                            var passwordCredential = new PasswordCredential();
+                            passwordCredential.Password = Access.Wifi_Password;
                             var result = await wifi.ConnectAsync(network, WiFiReconnectionKind.Automatic, passwordCredential);
 
                             if (result.ConnectionStatus.Equals(WiFiConnectionStatus.Success))
@@ -284,30 +282,22 @@ namespace SDE
                                             {
                                                 case AsyncStatus.Completed:
                                                     exception.Text = client.Sent() + " Messages sent";
-                                                    errorCount = 0;
                                                     if (startCounter > 2) startCounter = 2;
                                                     break;
                                                 case AsyncStatus.Canceled: exception.Text = "Canceled " + asyncInfo.ErrorCode; break;
                                                 case AsyncStatus.Error:
                                                     exception.Text = "0: Error: " + asyncInfo.ErrorCode;
                                                     label0.Text = "Error";
-                                                    errorCount++;
                                                     if (startCounter > 20) startCounter = 20;
                                                     break;
                                             }
-                                            activeTask = false;
                                             wifi.Disconnect();
                                             wifi = null;
+                                            testTimer.Start();
                                         });
                                     };
-
-                                    if (!activeTask)
-                                    {
-                                        activeTask = client.SendMessagesAsync(handler);
-                                        label0.Text = activeTask ? "Sending messages ..." : "No messages pending";
-                                    }
-                                    else label0.Text = "Active task";
-
+                                    client.SendMessagesAsync(handler);
+                                    label0.Text = "Sending messages ...";
                                 }
                                 catch (Exception ex)
                                 {
@@ -318,20 +308,25 @@ namespace SDE
                             {
                                 exception.Text = result.ConnectionStatus.ToString();
                                 if (startCounter > 2) startCounter = 2;
+                                testTimer.Start();
                             }
+                            return;
                         }
-                        else
-                        {
-                            exception.Text = AccessData.Access.Ssid + " not found.";
-                            if (startCounter > 2) startCounter = 2;
-                        }
-                    }
+                    } 
+                    exception.Text = Access.Ssid + " not found.";
+                    if (startCounter > 2) startCounter = 2;
+                    testTimer.Start();
                 }
                 else
                 {
                     exception.Text = "No wifi adapter found";
                     ResetEngine(10, "REBOOTING", true);
                 }
+            }
+            else
+            {
+                exception.Text = "Wifi access denied";
+                ResetEngine(10, "REBOOTING", true);
             }
         }
 
@@ -348,61 +343,33 @@ namespace SDE
             reboot = boot;
             startCounter = counter;
             startTimer.Start();
+            GC.Collect();
         }
 
         private void Error(string err)
         {
             exception.Text = err;
-
-            label1.Text = "";
-            label2.Text = "";
-            label3.Text = "";
-            label4.Text = "";
-            label5.Text = "";
-            label6.Text = "";
-            label7.Text = "";
-            label8.Text = "";
-            label9.Text = "";
-            label0.Text = "";
-
-            text1.Text = "";
-            text1.Text = "";
-            text2.Text = "";
-            text3.Text = "";
-            text4.Text = "";
-            text5.Text = "";
-            text6.Text = "";
-            text7.Text = "";
-            text8.Text = "";
-            text9.Text = "";
-
+            label0.Text = label1.Text = label2.Text = label3.Text = label4.Text = label5.Text = label6.Text = label7.Text = label8.Text = label9.Text = "";
+            text1.Text = text2.Text = text3.Text = text4.Text = text5.Text = text6.Text = text7.Text = text8.Text = text9.Text = "";
             canvas.Children.Clear();
         }
 
         private void EmptyTexts(string status)
         {
             text1.Text = status;
-            text2.Text = "";
-            text3.Text = "";
-            text4.Text = "";
-            text5.Text = "";
-            text6.Text = "";
-            text7.Text = "";
-            text8.Text = "";
-            text9.Text = "";
+            text2.Text = text3.Text = text4.Text = text5.Text = text6.Text = text7.Text = text8.Text = text9.Text = "";
             exception.Text = "";
             canvas.Children.Clear();
         }
 
-        private void SetLabels(LibAudio.HeartBeatType t)
+        private void SetLabels(HeartBeatType t)
         {
             label1.Text = "STATUS";
-
             switch (t)
             {
-                case LibAudio.HeartBeatType.INVALID:
-                case LibAudio.HeartBeatType.DEVICE_ERROR:
-                case LibAudio.HeartBeatType.NODEVICE:
+                case HeartBeatType.INVALID:
+                case HeartBeatType.DEVICE_ERROR:
+                case HeartBeatType.NODEVICE:
                     {
                         label2.Text = "";
                         label3.Text = "";
@@ -414,8 +381,7 @@ namespace SDE
                         label9.Text = "";
                         break;
                     };
-                case LibAudio.HeartBeatType.DATA:
-                case LibAudio.HeartBeatType.SILENCE:
+                case HeartBeatType.DATA:
                     {
                         label2.Text = "BEAT";
                         label3.Text = "CC";
@@ -427,7 +393,19 @@ namespace SDE
                         label9.Text = "SAMPLES";
                         break;
                     };
-                case LibAudio.HeartBeatType.BUFFERING:
+                case HeartBeatType.SILENCE:
+                    {
+                        label2.Text = "BEAT";
+                        label3.Text = "";
+                        label4.Text = "";
+                        label5.Text = "";
+                        label6.Text = "";
+                        label7.Text = "";
+                        label8.Text = "MEMORY";
+                        label9.Text = "SAMPLES";
+                        break;
+                    };
+                case HeartBeatType.BUFFERING:
                     {
                         label2.Text = "BEAT";
                         label3.Text = "PAC";
@@ -445,7 +423,7 @@ namespace SDE
         private async void AudioDeviceStatus()
         {
             string s = "";
-            var dis1 = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(Windows.Devices.Enumeration.DeviceClass.AudioCapture);
+            var dis1 = await DeviceInformation.FindAllAsync(DeviceClass.AudioCapture);
             foreach (var item in dis1)
             {
                 object o1, o2;
