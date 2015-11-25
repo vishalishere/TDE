@@ -128,6 +128,10 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\AccessData\AccessData.csproj">
+      <Project>{fc59e403-b886-4322-89ca-0cb709a06931}</Project>
+      <Name>AccessData</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LibAudio\LibAudio.vcxproj">
       <Project>{6d016b27-6145-474b-b8f1-55741ca0eee7}</Project>
       <Name>LibAudio</Name>

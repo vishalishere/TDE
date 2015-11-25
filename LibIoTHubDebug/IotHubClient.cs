@@ -21,7 +21,7 @@ namespace LibIoTHubDebug
             public ulong volume;
         }
 
-        private int MAX_MESSAGES = 100;
+        private int MAX_MESSAGES = 200;
 
         private Object thisLock = new Object();
         private int msgCount = 0;
@@ -71,8 +71,18 @@ namespace LibIoTHubDebug
 
             lock (thisLock)
             {
-                if (queue.Count == MAX_MESSAGES) queue.Dequeue();
-                queue.Enqueue(p);
+                if (t == LibAudio.HeartBeatType.DATA)
+                {
+                    if (queue.Count == MAX_MESSAGES) queue.Dequeue();
+                    queue.Enqueue(p);
+                }
+                else
+                {
+                    if (queue.Count < MAX_MESSAGES)
+                    {
+                        queue.Enqueue(p);
+                    }
+                }
             }
         }
 

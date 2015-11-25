@@ -6,16 +6,21 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Shapes;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
-using System.Threading.Tasks;
+using Windows.ApplicationModel.Core;
+using Windows.Devices.WiFi;
+using Windows.Foundation;
 
 namespace SDE
 {
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
     public sealed partial class MainPage : Page
     {
+        WiFiAdapter wifi;
+
+#if _DUMMY
+        private DispatcherTimer dummyTimer = null;
+#else
         private LibAudio.WASAPIEngine engine;
+#endif
         private LibIoTHubDebug.IotHubClient client = new LibIoTHubDebug.IotHubClient();
 
         private DispatcherTimer startTimer = new DispatcherTimer();
@@ -36,14 +41,14 @@ namespace SDE
         {
             this.InitializeComponent();
 
-            testTimer.Interval = new TimeSpan(0, 1, 0); // 1 minute
+            testTimer.Interval = new TimeSpan(0, 3, 0);
             testTimer.Tick += TestSend;
             testTimer.Start();
 
-            sendTimer.Interval = new TimeSpan(0, 0, 5); // 5 s
+            sendTimer.Interval = new TimeSpan(0, 0, 15); 
             sendTimer.Tick += Send;
              
-            startTimer.Interval = new TimeSpan(0, 0, 1); // 1 s
+            startTimer.Interval = new TimeSpan(0, 0, 1);
             startTimer.Tick += Tick;
             startTimer.Start();
 
@@ -53,7 +58,10 @@ namespace SDE
 
         ~MainPage()
         {
+#if _DUMMY
+#else
             engine.Finish();
+#endif
         }
 
         private void ThreadDelegate(LibAudio.HeartBeatType t, int i0, int i1, int i2, int i3, ulong i4, ulong i5, uint i6, ulong i7)
@@ -105,6 +113,8 @@ namespace SDE
                 switch (t)
                 {
                     case LibAudio.HeartBeatType.DATA:
+                        bufferingCount = 0;
+                        break;
                     case LibAudio.HeartBeatType.SILENCE:
                         text8.Text = Windows.System.MemoryManager.AppMemoryUsage.ToString();
                         bufferingCount = 0;
@@ -173,7 +183,7 @@ namespace SDE
             {
                 if (startCounter == 10)
                 {
-                    DeviceStatus();
+                    AudioDeviceStatus();
                     text2.Text = startCounter.ToString();
                     startCounter--;
                 }
@@ -183,13 +193,24 @@ namespace SDE
                     {
                         LibRPi.HelperClass hc = new LibRPi.HelperClass();
                         hc.Reboot();
+                        CoreApplication.Exit();
                     }
                     else
                     {
                         text1.Text = "STARTED";
-                        exception.Text = "";
                         exception.FontSize = 14;
+                        exception.Text = "";    
                         startTimer.Stop();
+
+#if _DUMMY
+                        dummyTimer = new DispatcherTimer();
+                        dummyTimer.Interval = new TimeSpan(0, 0, 1); // 1 s
+                        dummyTimer.Tick += (object ss, object ee) =>
+                        {
+                            ThreadDelegate(LibAudio.HeartBeatType.DATA, 5, 5, 5, 0, 0, Windows.System.MemoryManager.AppMemoryUsage, 44100, 0);
+                        };
+                        dummyTimer.Start();
+#else
                         engine = new LibAudio.WASAPIEngine();
 #if _WIN64
                         LibAudio.TDEParameters param = new LibAudio.TDEParameters(1, 0, 0, 0, 3);
@@ -203,12 +224,14 @@ namespace SDE
 #endif
 #endif
                         await engine.InitializeAsync(ThreadDelegate, param);
+#endif
                     }
                 }
                 else
                 {
                     text2.Text = startCounter.ToString();
                     startCounter--;
+                    GC.Collect();
                 }
             }
             catch (Exception ex)
@@ -222,57 +245,105 @@ namespace SDE
             if (errorCount == 5) ResetEngine(10, "REBOOTING", true);
             if (client.Messages() > 0)
             {
-                ResetEngine(60, "SENDING");
+                ResetEngine(120, "SENDING");
                 sendTimer.Start();
+                wifi?.Disconnect();
             }
         }
 
-        private void Send(object sender, object e)
+        private async void Send(object sender, object e)
         {
             sendTimer.Stop();
-            try
+
+            var access = await WiFiAdapter.RequestAccessAsync();
+            if (access == WiFiAccessStatus.Allowed)
             {
-                Windows.Foundation.AsyncActionCompletedHandler handler = (Windows.Foundation.IAsyncAction asyncInfo, Windows.Foundation.AsyncStatus asyncStatus) =>
+                var wifiDevices = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(WiFiAdapter.GetDeviceSelector());
+                if (wifiDevices?.Count > 0)
                 {
-                    var ignored = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+                    wifi = await WiFiAdapter.FromIdAsync(wifiDevices[0].Id);
+                    await wifi.ScanAsync();
+
+                    foreach (var network in wifi.NetworkReport.AvailableNetworks)
                     {
-                        switch (asyncStatus)
+                        if (network.Ssid == AccessData.Access.Ssid)
                         {
-                            case Windows.Foundation.AsyncStatus.Completed:
-                                exception.Text = client.Sent() + " Messages sent";
-                                errorCount = 0;
+                            var passwordCredential = new Windows.Security.Credentials.PasswordCredential();
+                            passwordCredential.Password = AccessData.Access.Wifi_Password;
+                            var result = await wifi.ConnectAsync(network, WiFiReconnectionKind.Automatic, passwordCredential);
+
+                            if (result.ConnectionStatus.Equals(WiFiConnectionStatus.Success))
+                            {
+                                try
+                                {
+                                    AsyncActionCompletedHandler handler = (IAsyncAction asyncInfo, AsyncStatus asyncStatus) =>
+                                    {
+                                        var ignored = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+                                        {
+                                            switch (asyncStatus)
+                                            {
+                                                case AsyncStatus.Completed:
+                                                    exception.Text = client.Sent() + " Messages sent";
+                                                    errorCount = 0;
+                                                    if (startCounter > 2) startCounter = 2;
+                                                    break;
+                                                case AsyncStatus.Canceled: exception.Text = "Canceled " + asyncInfo.ErrorCode; break;
+                                                case AsyncStatus.Error:
+                                                    exception.Text = "0: Error: " + asyncInfo.ErrorCode;
+                                                    label0.Text = "Error";
+                                                    errorCount++;
+                                                    if (startCounter > 20) startCounter = 20;
+                                                    break;
+                                            }
+                                            activeTask = false;
+                                            wifi.Disconnect();
+                                            wifi = null;
+                                        });
+                                    };
+
+                                    if (!activeTask)
+                                    {
+                                        activeTask = client.SendMessagesAsync(handler);
+                                        label0.Text = activeTask ? "Sending messages ..." : "No messages pending";
+                                    }
+                                    else label0.Text = "Active task";
+
+                                }
+                                catch (Exception ex)
+                                {
+                                    Error("4: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
+                                }
+                            }
+                            else
+                            {
+                                exception.Text = result.ConnectionStatus.ToString();
                                 if (startCounter > 2) startCounter = 2;
-                                break;
-                            case Windows.Foundation.AsyncStatus.Canceled: exception.Text = "Canceled " + asyncInfo.ErrorCode; break;
-                            case Windows.Foundation.AsyncStatus.Error:
-                                exception.Text = "0: Error: " + asyncInfo.ErrorCode;
-                                label0.Text = "Error";
-                                errorCount++;
-                                if (startCounter > 2) startCounter = 2;
-                                break;
+                            }
                         }
-                        activeTask = false;
-                    });
-                };
-
-                if (!activeTask)
-                {
-                    activeTask = client.SendMessagesAsync(handler);
-                    label0.Text = activeTask ? "Sending messages ..." : "No messages pending";
+                        else
+                        {
+                            exception.Text = AccessData.Access.Ssid + " not found.";
+                            if (startCounter > 2) startCounter = 2;
+                        }
+                    }
                 }
-                else label0.Text = "Active task";
-
-            }
-            catch (Exception ex)
-            {
-                Error("4: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
+                else
+                {
+                    exception.Text = "No wifi adapter found";
+                    ResetEngine(10, "REBOOTING", true);
+                }
             }
         }
 
         private void ResetEngine(uint counter, string str, bool boot = false)
         {
+#if _DUMMY
+            if (dummyTimer != null) dummyTimer.Stop();
+            dummyTimer = null;
+#else
             if (engine != null) engine.Finish();
-            engine = null;
+            engine = null;            
+#endif
             EmptyTexts(str);
             reboot = boot;
             startCounter = counter;
@@ -371,24 +442,19 @@ namespace SDE
             }
         }
 
-        async void DeviceStatus()
+        private async void AudioDeviceStatus()
         {
             string s = "";
-            var dis = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync();
-            foreach (var item in dis)
+            var dis1 = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(Windows.Devices.Enumeration.DeviceClass.AudioCapture);
+            foreach (var item in dis1)
             {
                 object o1, o2;
                 System.Collections.Generic.IReadOnlyDictionary<string,object> p = item.Properties;
                 p.TryGetValue("System.ItemNameDisplay", out o1);
                 p.TryGetValue("System.Devices.InterfaceEnabled", out o2);
-                s += o1.ToString() + " " + o2.ToString() + "\n";
-                //foreach (var prop in p)
-                //{
-                //    s += prop.Key != null ? prop.Key.ToString() + " : " : "";
-                //    s += prop.Value != null ? prop.Value.ToString() + "\n" : "\n";
-                //}
+                s += (o1 != null ? o1.ToString() : "") + " " + (o2 != null ? o2.ToString() : "") + "\n";
             }
-            exception.FontSize = 10;
+            exception.FontSize = 9;
             exception.Text = s;
         }
     }
