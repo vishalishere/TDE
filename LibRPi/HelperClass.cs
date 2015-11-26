@@ -21,7 +21,7 @@ namespace LibRPi
             String URL = "http://localhost:8080/api/control/reboot";
             System.Diagnostics.Debug.WriteLine(URL);
             StreamReader SR = await PostJsonStreamData(URL);
-            CoreApplication.Exit();
+            //CoreApplication.Exit();
         }
 
         private async void StartApp(string appName)

@@ -31,12 +31,14 @@ namespace SDE
         private DispatcherTimer startTimer = new DispatcherTimer();
         private DispatcherTimer sendTimer = new DispatcherTimer();
         private DispatcherTimer testTimer = new DispatcherTimer();
+        private DispatcherTimer statusTimer = new DispatcherTimer();
 
         private uint bufferingCount = 0;
         private uint startCounter = 10;
         private uint sampleCount = 0;
         private uint messageCount = 0;
         private uint count = 0;
+        private string status = "";
 
         private bool reboot = false;
 
@@ -50,7 +52,10 @@ namespace SDE
 
             sendTimer.Interval = new TimeSpan(0, 0, 10); 
             sendTimer.Tick += Send;
-             
+
+            statusTimer.Interval = new TimeSpan(0, 0, 1);
+            statusTimer.Tick += (object sender, object e) => { label0.Text = status; };
+
             startTimer.Interval = new TimeSpan(0, 0, 1);
             startTimer.Tick += Tick;
             startTimer.Start();
@@ -128,13 +133,15 @@ namespace SDE
                         ResetEngine(10, "ERROR");
                         return;
                     case HeartBeatType.NODEVICE:
-                        ResetEngine(10, "REBOOTING", true);
+                        reboot = true;
+                        ResetEngine(10, "REBOOTING");
                         return;
                 }
 
                 if (bufferingCount == 60)
                 {
-                    ResetEngine(10, "REBOOTING", true);
+                    reboot = true;
+                    ResetEngine(10, "REBOOTING");
                     return;
                 }
                 if (bufferingCount >= 5 && bufferingCount % 5 == 0)
@@ -193,14 +200,14 @@ namespace SDE
                 {
                     if (reboot)
                     {
+                        reboot = false;
                         LibRPi.HelperClass hc = new LibRPi.HelperClass();
                         hc.Reboot();
                     }
                     else
                     {
                         text1.Text = "STARTED";
-                        exception.FontSize = 14;
-                        exception.Text = "";    
+                        errorText.Text = "";    
                         startTimer.Stop();
 
 #if _DUMMY
@@ -253,84 +260,118 @@ namespace SDE
         private async void Send(object sender, object e)
         {
             sendTimer.Stop();
+            statusTimer.Start();
+            status = "RequestAccessAsync";
             var access = await WiFiAdapter.RequestAccessAsync();
             if (access == WiFiAccessStatus.Allowed)
             {
+                status = "FindAllAsync";
                 var wifiDevices = await DeviceInformation.FindAllAsync(WiFiAdapter.GetDeviceSelector());
                 if (wifiDevices?.Count > 0)
                 {
+                    status = "FromIdAsync";
                     wifi = await WiFiAdapter.FromIdAsync(wifiDevices[0].Id);
-                    await wifi.ScanAsync();
 
-                    foreach (var network in wifi.NetworkReport.AvailableNetworks)
+                    status = "Disconnect";
+                    wifi?.Disconnect();
+
+                    status = "ScanAsync";
+                    IAsyncAction a = wifi?.ScanAsync();
+                    await a;
+
+                    if (a.Status == AsyncStatus.Completed && wifi?.NetworkReport?.AvailableNetworks?.Count > 0)
                     {
-                        if (network.Ssid == Access.Ssid)
+                        foreach (var network in wifi.NetworkReport.AvailableNetworks)
                         {
-                            var passwordCredential = new PasswordCredential();
-                            passwordCredential.Password = Access.Wifi_Password;
-                            var result = await wifi.ConnectAsync(network, WiFiReconnectionKind.Automatic, passwordCredential);
+                            if (network.Ssid == Access.Ssid)
+                            {
+                                var passwordCredential = new PasswordCredential();
+                                passwordCredential.Password = Access.Wifi_Password;
 
-                            if (result.ConnectionStatus.Equals(WiFiConnectionStatus.Success))
-                            {
-                                try
+                                status = "ConnectAsync";
+                                var result = await wifi.ConnectAsync(network, WiFiReconnectionKind.Automatic, passwordCredential);
+
+                                if (result.ConnectionStatus.Equals(WiFiConnectionStatus.Success))
                                 {
-                                    AsyncActionCompletedHandler handler = (IAsyncAction asyncInfo, AsyncStatus asyncStatus) =>
+                                    try
                                     {
-                                        var ignored = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+                                        AsyncActionCompletedHandler handler = (IAsyncAction asyncInfo, AsyncStatus asyncStatus) =>
                                         {
-                                            switch (asyncStatus)
+                                            var ignored = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
                                             {
-                                                case AsyncStatus.Completed:
-                                                    exception.Text = client.Sent() + " Messages sent";
-                                                    if (startCounter > 2) startCounter = 2;
-                                                    break;
-                                                case AsyncStatus.Canceled: exception.Text = "Canceled " + asyncInfo.ErrorCode; break;
-                                                case AsyncStatus.Error:
-                                                    exception.Text = "0: Error: " + asyncInfo.ErrorCode;
-                                                    label0.Text = "Error";
-                                                    if (startCounter > 20) startCounter = 20;
-                                                    break;
-                                            }
-                                            wifi.Disconnect();
-                                            wifi = null;
-                                            testTimer.Start();
-                                        });
-                                    };
-                                    client.SendMessagesAsync(handler);
-                                    label0.Text = "Sending messages ...";
+                                                switch (asyncStatus)
+                                                {
+                                                    case AsyncStatus.Completed:
+                                                        errorText.Text = client.Sent() + " Messages sent";
+                                                        if (startCounter > 2) startCounter = 2;
+                                                        break;
+                                                    case AsyncStatus.Canceled: errorText.Text = "Canceled " + asyncInfo.ErrorCode; break;
+                                                    case AsyncStatus.Error:
+                                                        errorText.Text = "0: Error: " + asyncInfo.ErrorCode;
+                                                        label0.Text = "Error";
+                                                        if (startCounter > 20) startCounter = 20;
+                                                        break;
+                                                }
+                                                wifi.Disconnect();
+                                                wifi = null;
+                                                testTimer.Start();
+                                            });
+                                        };
+                                        statusTimer.Stop();
+                                        status = "SendMessagesAsync";
+                                        client.SendMessagesAsync(handler);
+                                        label0.Text = "Sending messages ...";
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        statusTimer.Stop();
+                                        Error("4: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
+                                        testTimer.Start();
+                                    }
                                 }
-                                catch (Exception ex)
+                                else
                                 {
-                                    Error("4: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
+                                    statusTimer.Stop();
+                                    errorText.Text = result.ConnectionStatus.ToString();
+                                    if (startCounter > 9) startCounter = 9;
+                                    testTimer.Start();
                                 }
+                                return;
                             }
-                            else
-                            {
-                                exception.Text = result.ConnectionStatus.ToString();
-                                if (startCounter > 2) startCounter = 2;
-                                testTimer.Start();
-                            }
-                            return;
                         }
-                    } 
-                    exception.Text = Access.Ssid + " not found.";
-                    if (startCounter > 2) startCounter = 2;
-                    testTimer.Start();
-                }
+                        statusTimer.Stop();
+                        errorText.Text = Access.Ssid + " not found.";
+                        if (startCounter > 2) startCounter = 2;
+                        testTimer.Start();
+                    }
+                    else
+                    {
+                        statusTimer.Stop();
+                        errorText.Text = "No wifi networks found " + a.Status.ToString();
+                        if (startCounter > 9) startCounter = 9;
+                        testTimer.Start();
+                    }
+
+                }   
                 else
                 {
-                    exception.Text = "No wifi adapter found";
-                    ResetEngine(10, "REBOOTING", true);
+                    statusTimer.Stop();
+                    errorText.Text = "No wifi adapter found";
+                    wifiStatus.Text = "No wifi adapter found";
+                    if (startCounter > 9) startCounter = 9;
+                    testTimer.Start();
                 }
             }
             else
             {
-                exception.Text = "Wifi access denied";
-                ResetEngine(10, "REBOOTING", true);
+                statusTimer.Stop();
+                errorText.Text = "Wifi access denied " + access.ToString();
+                if (startCounter > 9) startCounter = 9;
+                testTimer.Start();
             }
         }
 
-        private void ResetEngine(uint counter, string str, bool boot = false)
+        private void ResetEngine(uint counter, string str)
         {
 #if _DUMMY
             if (dummyTimer != null) dummyTimer.Stop();
@@ -340,7 +381,6 @@ namespace SDE
             engine = null;            
 #endif
             EmptyTexts(str);
-            reboot = boot;
             startCounter = counter;
             startTimer.Start();
             GC.Collect();
@@ -348,17 +388,15 @@ namespace SDE
 
         private void Error(string err)
         {
-            exception.Text = err;
+            errorText.Text = err;
             label0.Text = label1.Text = label2.Text = label3.Text = label4.Text = label5.Text = label6.Text = label7.Text = label8.Text = label9.Text = "";
-            text1.Text = text2.Text = text3.Text = text4.Text = text5.Text = text6.Text = text7.Text = text8.Text = text9.Text = "";
-            canvas.Children.Clear();
+            EmptyTexts("");
         }
 
         private void EmptyTexts(string status)
         {
             text1.Text = status;
             text2.Text = text3.Text = text4.Text = text5.Text = text6.Text = text7.Text = text8.Text = text9.Text = "";
-            exception.Text = "";
             canvas.Children.Clear();
         }
 
@@ -367,7 +405,6 @@ namespace SDE
             label1.Text = "STATUS";
             switch (t)
             {
-                case HeartBeatType.INVALID:
                 case HeartBeatType.DEVICE_ERROR:
                 case HeartBeatType.NODEVICE:
                     {
@@ -381,6 +418,7 @@ namespace SDE
                         label9.Text = "";
                         break;
                     };
+                case HeartBeatType.INVALID:
                 case HeartBeatType.DATA:
                     {
                         label2.Text = "BEAT";
@@ -432,8 +470,7 @@ namespace SDE
                 p.TryGetValue("System.Devices.InterfaceEnabled", out o2);
                 s += (o1 != null ? o1.ToString() : "") + " " + (o2 != null ? o2.ToString() : "") + "\n";
             }
-            exception.FontSize = 9;
-            exception.Text = s;
+            errorText.Text = s;
         }
     }
 }

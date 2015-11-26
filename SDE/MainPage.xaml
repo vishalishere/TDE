@@ -10,7 +10,7 @@
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="10" />
+                <RowDefinition Height="30" />
                 <RowDefinition Height="30" />
                 <RowDefinition Height="30" />
                 <RowDefinition Height="50" />
@@ -29,6 +29,7 @@
                 <ColumnDefinition Width="180"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
+            <TextBlock x:Name="wifiStatus" Grid.Row="0" Grid.Column="1" FontSize="16"/>
             <TextBlock x:Name="label1" Grid.Row="1" Grid.Column="1" FontSize="16"/>
             <TextBlock x:Name="label2" Grid.Row="1" Grid.Column="2" FontSize="16"/>
             <TextBlock x:Name="label3" Grid.Row="1" Grid.Column="3" FontSize="16"/>
@@ -48,7 +49,7 @@
             <TextBlock x:Name="text7" Grid.Row="2" Grid.Column="7" FontSize="14"/>
             <TextBlock x:Name="text8" Grid.Row="2" Grid.Column="8" FontSize="14"/>
             <TextBlock x:Name="text9" Grid.Row="2" Grid.Column="9" FontSize="14"/>
-            <TextBlock x:Name="exception" Grid.Row="3" Grid.Column="1" FontSize="14" Grid.ColumnSpan="10" Grid.RowSpan="2" TextWrapping="Wrap" LineStackingStrategy="BaselineToBaseline"/>
+            <TextBlock x:Name="errorText" Grid.Row="3" Grid.Column="1" FontSize="14" Grid.ColumnSpan="10" Grid.RowSpan="2" TextWrapping="Wrap" LineStackingStrategy="BaselineToBaseline"/>
             <Canvas x:Name="canvas" Grid.Row="4" Grid.Column="0" Width="1600" Height="800"/>
         </Grid>
     </Grid>
