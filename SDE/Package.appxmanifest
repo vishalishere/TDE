@@ -26,6 +26,6 @@
     <Capability Name="internetClient" />
     <uap:Capability Name="musicLibrary" />
     <DeviceCapability Name="microphone" />
-    <DeviceCapability Name="wifiControl"/>
+    <DeviceCapability Name="wifiControl" />
   </Capabilities>
 </Package>

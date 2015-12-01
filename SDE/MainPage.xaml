@@ -29,7 +29,7 @@
                 <ColumnDefinition Width="180"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock x:Name="wifiStatus" Grid.Row="0" Grid.Column="1" FontSize="16"/>
+            <TextBlock x:Name="AppStatus" Grid.Row="0" Grid.ColumnSpan="10" Grid.Column="1" FontSize="16"/>
             <TextBlock x:Name="label1" Grid.Row="1" Grid.Column="1" FontSize="16"/>
             <TextBlock x:Name="label2" Grid.Row="1" Grid.Column="2" FontSize="16"/>
             <TextBlock x:Name="label3" Grid.Row="1" Grid.Column="3" FontSize="16"/>

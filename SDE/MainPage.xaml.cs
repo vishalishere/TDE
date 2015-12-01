@@ -15,6 +15,9 @@ using Windows.Security.Credentials;
 
 using AccessData;
 using LibAudio;
+using Windows.Storage;
+using System.Threading.Tasks;
+using Windows.Storage.Streams;
 
 namespace SDE
 {
@@ -29,32 +32,37 @@ namespace SDE
         private LibIoTHubDebug.IotHubClient client = new LibIoTHubDebug.IotHubClient();
 
         private DispatcherTimer startTimer = new DispatcherTimer();
-        private DispatcherTimer sendTimer = new DispatcherTimer();
-        private DispatcherTimer testTimer = new DispatcherTimer();
+        private DispatcherTimer sendDelayTimer = new DispatcherTimer();
+        private DispatcherTimer connectionTimer = new DispatcherTimer();
         private DispatcherTimer statusTimer = new DispatcherTimer();
 
         private uint bufferingCount = 0;
         private uint startCounter = 10;
         private uint sampleCount = 0;
         private uint messageCount = 0;
-        private uint count = 0;
+        private uint networkError = 0;
+        private uint beat = 0;
         private string status = "";
 
         private bool reboot = false;
+        private bool rebootPending = false;
 
         public MainPage()
         {
             this.InitializeComponent();
 
-            testTimer.Interval = new TimeSpan(0, 3, 0);
-            testTimer.Tick += TestSend;
-            testTimer.Start();
+            connectionTimer.Interval = new TimeSpan(0, 3, 0);
+            connectionTimer.Tick += TestSend;
+            connectionTimer.Start();
 
-            sendTimer.Interval = new TimeSpan(0, 0, 10); 
-            sendTimer.Tick += Send;
+            sendDelayTimer.Interval = new TimeSpan(0, 0, 10); 
+            sendDelayTimer.Tick += Send;
 
             statusTimer.Interval = new TimeSpan(0, 0, 1);
-            statusTimer.Tick += (object sender, object e) => { label0.Text = status; };
+            statusTimer.Tick += (object sender, object e) => {
+                label0.Text = status;
+                AppStatus.Text = bufferingCount.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
+            };
 
             startTimer.Interval = new TimeSpan(0, 0, 1);
             startTimer.Tick += Tick;
@@ -83,10 +91,10 @@ namespace SDE
             {
                 try
                 {
-                    if (t == HeartBeatType.DATA || messageCount == 10)
+                    if (t == HeartBeatType.DATA || messageCount == 5)
                     {
                         messageCount = 0;
-                        client.AddMessage(t, i0, i1, i2, i4, i5);
+                        client.AddMessage(t, i0, i1, i2, i4, i5, beat);
                         label0.Text = "Message added";
                     }
                     else
@@ -97,7 +105,7 @@ namespace SDE
                 }
                 catch (Exception ex)
                 {
-                    Error("1: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
+                    Error("ThreadDelegate: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
                 }
             });
         }
@@ -108,7 +116,7 @@ namespace SDE
             {
                 SetLabels(t);
                 text1.Text = client.HeartBeatText(t);
-                text2.Text =(count++).ToString();
+                text2.Text =(beat++).ToString();
 
                 text3.Text = t == HeartBeatType.SILENCE ? "" : i0.ToString();
                 text4.Text = t == HeartBeatType.SILENCE ? "" : i1.ToString();
@@ -121,34 +129,27 @@ namespace SDE
                 {
                     case HeartBeatType.DATA:
                         bufferingCount = 0;
+                        rebootPending = false;
                         break;
                     case HeartBeatType.SILENCE:
                         text8.Text = MemoryManager.AppMemoryUsage.ToString();
+                        rebootPending = false;
                         bufferingCount = 0;
                         break;
                     case HeartBeatType.BUFFERING:
                         bufferingCount++;
                         break;
                     case HeartBeatType.DEVICE_ERROR:
+                        rebootPending = true;
                         ResetEngine(10, "ERROR");
                         return;
                     case HeartBeatType.NODEVICE:
-                        reboot = true;
-                        ResetEngine(10, "REBOOTING");
+                        rebootPending = true;
                         return;
                 }
 
-                if (bufferingCount == 60)
-                {
-                    reboot = true;
-                    ResetEngine(10, "REBOOTING");
-                    return;
-                }
-                if (bufferingCount >= 5 && bufferingCount % 5 == 0)
-                {
-                    ResetEngine(10, "RESET");
-                    return;
-                }
+                if (bufferingCount == 60) { rebootPending = true; }
+                else if (bufferingCount >= 5 && bufferingCount % 5 == 0) { ResetEngine(10, "RESET"); }
                 
                 if (t != HeartBeatType.BUFFERING) canvas.Children.Clear();
                 if (t == HeartBeatType.DATA)
@@ -162,10 +163,11 @@ namespace SDE
                     sampleCount++;       
                 }
                 text9.Text = sampleCount.ToString();
+                AppStatus.Text = bufferingCount.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
             }
             catch (Exception ex)
             {
-                Error("2: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
+                Error("UpdateUI: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
             }
         }
 
@@ -192,14 +194,20 @@ namespace SDE
             {
                 if (startCounter == 10)
                 {
-                    AudioDeviceStatus();
-                    text2.Text = startCounter.ToString();
                     startCounter--;
+                    startTimer.Stop();
+                    reboot = await ReadStatus();
+                    await client.LoadQueueAsync();
+                    AudioDeviceStatus();
+                    startTimer.Start();
+                    text2.Text = startCounter.ToString();     
                 }
                 else if (startCounter == 0)
                 {
                     if (reboot)
                     {
+                        startTimer.Stop();
+                        await client.SaveQueueAsync();
                         reboot = false;
                         LibRPi.HelperClass hc = new LibRPi.HelperClass();
                         hc.Reboot();
@@ -221,7 +229,7 @@ namespace SDE
 #else
                         engine = new WASAPIEngine();
 #if _WIN64
-                        TDEParameters param = new TDEParameters(1, 0, 0, 0, 3);
+                        TDEParameters param = new TDEParameters(1, 0, 0, 0, 1);
 #else
 #if _PI2_1
                         TDEParameters param = new TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 1000, 32000, -60, false, "");
@@ -243,7 +251,7 @@ namespace SDE
             }
             catch (Exception ex)
             {
-                Error("3: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
+                Error("Tick: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
             }
         }
 
@@ -252,41 +260,50 @@ namespace SDE
             if (client.Messages() > 0)
             {
                 ResetEngine(120, "SENDING");
-                sendTimer.Start();
-                testTimer.Stop();
+                sendDelayTimer.Start();
+                connectionTimer.Stop();
             }
         }
 
         private async void Send(object sender, object e)
         {
-            sendTimer.Stop();
+            sendDelayTimer.Stop();
             statusTimer.Start();
-            status = "RequestAccessAsync";
             var access = await WiFiAdapter.RequestAccessAsync();
             if (access == WiFiAccessStatus.Allowed)
             {
-                status = "FindAllAsync";
                 var wifiDevices = await DeviceInformation.FindAllAsync(WiFiAdapter.GetDeviceSelector());
                 if (wifiDevices?.Count > 0)
                 {
-                    status = "FromIdAsync";
                     wifi = await WiFiAdapter.FromIdAsync(wifiDevices[0].Id);
 
-                    status = "Disconnect";
-                    wifi?.Disconnect();
+                    await WriteStatus(true);
 
                     status = "ScanAsync";
                     IAsyncAction a = wifi?.ScanAsync();
                     await a;
 
+                    await WriteStatus(false);
+
                     if (a.Status == AsyncStatus.Completed && wifi?.NetworkReport?.AvailableNetworks?.Count > 0)
                     {
                         foreach (var network in wifi.NetworkReport.AvailableNetworks)
                         {
-                            if (network.Ssid == Access.Ssid)
+                            bool found = false;
+                            uint wlan = 0;
+                            for (uint i = 0; i < Access.Networks; i++)
+                            {
+                                if (network.Ssid == Access.SSID(i))
+                                {
+                                    wlan = i;   
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (found)
                             {
                                 var passwordCredential = new PasswordCredential();
-                                passwordCredential.Password = Access.Wifi_Password;
+                                passwordCredential.Password = Access.WIFI_Password(wlan);
 
                                 status = "ConnectAsync";
                                 var result = await wifi.ConnectAsync(network, WiFiReconnectionKind.Automatic, passwordCredential);
@@ -303,6 +320,7 @@ namespace SDE
                                                 {
                                                     case AsyncStatus.Completed:
                                                         errorText.Text = client.Sent() + " Messages sent";
+                                                        networkError = 0;
                                                         if (startCounter > 2) startCounter = 2;
                                                         break;
                                                     case AsyncStatus.Canceled: errorText.Text = "Canceled " + asyncInfo.ErrorCode; break;
@@ -312,13 +330,13 @@ namespace SDE
                                                         if (startCounter > 20) startCounter = 20;
                                                         break;
                                                 }
+                                                if (rebootPending) reboot = true;
                                                 wifi.Disconnect();
                                                 wifi = null;
-                                                testTimer.Start();
+                                                connectionTimer.Start();
                                             });
                                         };
                                         statusTimer.Stop();
-                                        status = "SendMessagesAsync";
                                         client.SendMessagesAsync(handler);
                                         label0.Text = "Sending messages ...";
                                     }
@@ -326,53 +344,34 @@ namespace SDE
                                     {
                                         statusTimer.Stop();
                                         Error("4: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
-                                        testTimer.Start();
+                                        connectionTimer.Start();
                                     }
                                 }
-                                else
-                                {
-                                    statusTimer.Stop();
-                                    errorText.Text = result.ConnectionStatus.ToString();
-                                    if (startCounter > 9) startCounter = 9;
-                                    testTimer.Start();
-                                }
+                                else NoConnection(false, 9, result.ConnectionStatus.ToString());
                                 return;
                             }
                         }
-                        statusTimer.Stop();
-                        errorText.Text = Access.Ssid + " not found.";
-                        if (startCounter > 2) startCounter = 2;
-                        testTimer.Start();
+                        NoConnection(rebootPending  || (++networkError == 5), 9, Access.Ssid + " not found.");
                     }
-                    else
-                    {
-                        statusTimer.Stop();
-                        errorText.Text = "No wifi networks found " + a.Status.ToString();
-                        if (startCounter > 9) startCounter = 9;
-                        testTimer.Start();
-                    }
-
+                    else NoConnection(rebootPending || (++networkError == 5), 9, "No wifi networks found " + a.Status.ToString());
                 }   
-                else
-                {
-                    statusTimer.Stop();
-                    errorText.Text = "No wifi adapter found";
-                    wifiStatus.Text = "No wifi adapter found";
-                    if (startCounter > 9) startCounter = 9;
-                    testTimer.Start();
-                }
+                else NoConnection(true, 15, "No wifi adapter found - rebooting");                    
             }
-            else
-            {
-                statusTimer.Stop();
-                errorText.Text = "Wifi access denied " + access.ToString();
-                if (startCounter > 9) startCounter = 9;
-                testTimer.Start();
-            }
+            else NoConnection(true, 15, "Wifi access denied - rebooting" + access.ToString());
+        }
+
+        private void NoConnection(bool boot, uint counter, string str)
+        {
+            if (!reboot) reboot = boot;
+            errorText.Text = str;
+            statusTimer.Stop();
+            if (startCounter > counter) startCounter = counter;
+            if (!reboot) connectionTimer.Start();
         }
 
         private void ResetEngine(uint counter, string str)
         {
+            if (startTimer.IsEnabled) startTimer.Stop();
 #if _DUMMY
             if (dummyTimer != null) dummyTimer.Stop();
             dummyTimer = null;
@@ -456,6 +455,51 @@ namespace SDE
                         break;
                     }
             }
+        }
+
+        private async Task WriteStatus(bool state)
+        {
+            StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
+            StorageFile file = await storageFolder.CreateFileAsync("status.txt", CreationCollisionOption.ReplaceExisting);
+            var stream = await file.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite);
+
+            using (var outputStream = stream.GetOutputStreamAt(0))
+            {
+                using (var dataWriter = new DataWriter(outputStream))
+                {
+                    dataWriter.WriteBoolean(state);
+                    await dataWriter.StoreAsync();
+                    await outputStream.FlushAsync();
+
+                }
+            }
+            stream.Dispose();
+        }
+
+        private async Task<bool> ReadStatus()
+        {
+            bool state = false;
+            try
+            {
+                StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
+                StorageFile file = await storageFolder.GetFileAsync("status.txt");
+
+                var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
+                ulong size = stream.Size;
+
+                using (var inputStream = stream.GetInputStreamAt(0))
+                {
+                    using (var dataReader = new DataReader(inputStream))
+                    {
+                        uint numBytesLoaded = await dataReader.LoadAsync((uint)size);
+                        state = dataReader.ReadBoolean();
+                    }
+
+                }
+                stream.Dispose();
+            }
+            catch (Exception) {}
+            return state;
         }
 
         private async void AudioDeviceStatus()

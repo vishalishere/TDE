@@ -38,7 +38,7 @@ DataConsumer::~DataConsumer()
 void DataConsumer::Start()
 {
 	TimeSpan delay;
-	delay.Duration = 2000000; // 0.2 s	(10,000,000 ticks per second)
+	delay.Duration = 10000000; // 1 s	(10,000,000 ticks per second)
 
 	m_delayTimer = ThreadPoolTimer::CreatePeriodicTimer(
 		ref new TimerElapsedHandler([this](ThreadPoolTimer^ source)
@@ -117,7 +117,7 @@ void DataConsumer::AudioTask()
 			}
 			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
 		}
-		HeartBeat(HeartBeatType::BUFFERING, 10000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter,
+		HeartBeat(HeartBeatType::BUFFERING, 4000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter,
 			0, m_devices[m_params->Device0()].GetPosition(), m_devices[m_params->Device1()].GetPosition());
 	};
 
