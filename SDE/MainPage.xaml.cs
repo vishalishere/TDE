@@ -168,7 +168,7 @@ namespace SDE
                     sampleCount++;       
                 }
                 text9.Text = sampleCount.ToString();
-                AppStatus.Text = bufferingCount.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
+                AppStatus.Text = bufferingCount.ToString() + " " + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
             }
             catch (Exception ex)
             {
