@@ -61,7 +61,7 @@ namespace SDE
             statusTimer.Interval = new TimeSpan(0, 0, 1);
             statusTimer.Tick += (object sender, object e) => {
                 label0.Text = status;
-                AppStatus.Text = bufferingCount.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
+                AppStatus.Text = bufferingCount.ToString() + " " + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
             };
 
             startTimer.Interval = new TimeSpan(0, 0, 1);
