@@ -204,6 +204,7 @@ namespace SDE
                     if (beat == 0)
                     {
                         reboot = await ReadStatus();
+                        if (reboot) await WriteStatus(false);
                         await client.LoadQueueAsync();
                     }
                     AudioDeviceStatus();

@@ -39,7 +39,7 @@ namespace LibIoTHubDebug
             public void Read(DataReader reader)
             {
                 t = (LibAudio.HeartBeatType) reader.ReadInt32();
-                time = reader.ReadDateTime().DateTime;
+                time = reader.ReadDateTime().UtcDateTime;
                 cc = reader.ReadInt32();
                 asdf = reader.ReadInt32();
                 peak = reader.ReadInt32();
