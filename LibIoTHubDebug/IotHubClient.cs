@@ -51,7 +51,7 @@ namespace LibIoTHubDebug
 
         private int MAX_MESSAGES = 10000;
 
-        private Object thisLock = new Object();
+        private object thisLock = new object();
         private int msgCount = 0;
 
         System.Collections.Generic.Queue<DataPoint> queue = new System.Collections.Generic.Queue<DataPoint>();

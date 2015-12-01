@@ -23,6 +23,8 @@ namespace SDE
 {
     public sealed partial class MainPage : Page
     {
+        private Object thisLock = new Object();
+
         WiFiAdapter wifi = null;
 #if _DUMMY
         private DispatcherTimer dummyTimer = null;
@@ -60,8 +62,11 @@ namespace SDE
 
             statusTimer.Interval = new TimeSpan(0, 0, 1);
             statusTimer.Tick += (object sender, object e) => {
-                label0.Text = status;
-                AppStatus.Text = bufferingCount.ToString() + " " + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
+                lock(thisLock)
+                {
+                    label0.Text = status;
+                    AppStatus.Text = bufferingCount.ToString() + " " + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
+                }
             };
 
             startTimer.Interval = new TimeSpan(0, 0, 1);
@@ -196,8 +201,11 @@ namespace SDE
                 {
                     startCounter--;
                     startTimer.Stop();
-                    reboot = await ReadStatus();
-                    await client.LoadQueueAsync();
+                    if (beat == 0)
+                    {
+                        reboot = await ReadStatus();
+                        await client.LoadQueueAsync();
+                    }
                     AudioDeviceStatus();
                     startTimer.Start();
                     text2.Text = startCounter.ToString();     
@@ -232,7 +240,7 @@ namespace SDE
                         TDEParameters param = new TDEParameters(1, 0, 0, 0, 1);
 #else
 #if _PI2_1
-                        TDEParameters param = new TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 1000, 32000, -60, false, "");
+                        TDEParameters param = new TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 500, 32000, -60, false, "");
 #elif _PI2_2
                         TDEParameters param = new TDEParameters(1, 0, 0, 3, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
 #else
@@ -265,6 +273,14 @@ namespace SDE
             }
         }
 
+        private void SetStatus(string str)
+        {
+            lock(thisLock)
+            {
+                status = str;
+            }
+        }
+
         private async void Send(object sender, object e)
         {
             sendDelayTimer.Stop();
@@ -279,7 +295,7 @@ namespace SDE
 
                     await WriteStatus(true);
 
-                    status = "ScanAsync";
+                    SetStatus("ScanAsync");
                     IAsyncAction a = wifi?.ScanAsync();
                     await a;
 
@@ -305,7 +321,7 @@ namespace SDE
                                 var passwordCredential = new PasswordCredential();
                                 passwordCredential.Password = Access.WIFI_Password(wlan);
 
-                                status = "ConnectAsync";
+                                SetStatus("ConnectAsync");
                                 var result = await wifi.ConnectAsync(network, WiFiReconnectionKind.Automatic, passwordCredential);
 
                                 if (result.ConnectionStatus.Equals(WiFiConnectionStatus.Success))
@@ -326,7 +342,7 @@ namespace SDE
                                                     case AsyncStatus.Canceled: errorText.Text = "Canceled " + asyncInfo.ErrorCode; break;
                                                     case AsyncStatus.Error:
                                                         errorText.Text = "0: Error: " + asyncInfo.ErrorCode;
-                                                        label0.Text = "Error";
+                                                        SetStatus("Error");
                                                         if (startCounter > 20) startCounter = 20;
                                                         break;
                                                 }
@@ -338,7 +354,7 @@ namespace SDE
                                         };
                                         statusTimer.Stop();
                                         client.SendMessagesAsync(handler);
-                                        label0.Text = "Sending messages ...";
+                                        SetStatus("Sending messages ...");
                                     }
                                     catch (Exception ex)
                                     {
