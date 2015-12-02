@@ -41,7 +41,6 @@ namespace SDE
         private uint bufferingCount = 0;
         private uint startCounter = 10;
         private uint sampleCount = 0;
-        private uint messageCount = 0;
         private uint networkError = 0;
         private uint beat = 0;
         private string status = "";
@@ -65,7 +64,7 @@ namespace SDE
                 lock(thisLock)
                 {
                     label0.Text = status;
-                    AppStatus.Text = bufferingCount.ToString() + " " + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
+                    AppStatus.Text = bufferingCount.ToString() + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString() + " " + connectionTimer.IsEnabled.ToString();
                 }
             };
 
@@ -96,17 +95,7 @@ namespace SDE
             {
                 try
                 {
-                    if (t == HeartBeatType.DATA || messageCount == 5)
-                    {
-                        messageCount = 0;
-                        client.AddMessage(t, i0, i1, i2, i4, i5, beat);
-                        label0.Text = "Message added";
-                    }
-                    else
-                    {
-                        messageCount++;
-                        label0.Text = messageCount.ToString();
-                    }
+                    client.AddMessage(t, i0, i1, i2, i4, i5, beat); 
                 }
                 catch (Exception ex)
                 {
@@ -154,7 +143,7 @@ namespace SDE
                 }
 
                 if (bufferingCount == 60) { rebootPending = true; }
-                else if (bufferingCount >= 5 && bufferingCount % 5 == 0) { ResetEngine(10, "RESET"); }
+                else if (bufferingCount >= 10 && bufferingCount % 10 == 0) { ResetEngine(10, "RESET"); }
                 
                 if (t != HeartBeatType.BUFFERING) canvas.Children.Clear();
                 if (t == HeartBeatType.DATA)
@@ -168,7 +157,7 @@ namespace SDE
                     sampleCount++;       
                 }
                 text9.Text = sampleCount.ToString();
-                AppStatus.Text = bufferingCount.ToString() + " " + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString();
+                AppStatus.Text = bufferingCount.ToString() + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString() + " " + connectionTimer.IsEnabled.ToString();
             }
             catch (Exception ex)
             {
@@ -349,18 +338,18 @@ namespace SDE
                                                 }
                                                 if (rebootPending) reboot = true;
                                                 wifi.Disconnect();
-                                                wifi = null;
-                                                connectionTimer.Start();
+                                                wifi = null;           
                                             });
                                         };
                                         statusTimer.Stop();
+                                        connectionTimer.Start();
                                         client.SendMessagesAsync(handler);
                                         SetStatus("Sending messages ...");
                                     }
                                     catch (Exception ex)
                                     {
                                         statusTimer.Stop();
-                                        Error("4: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
+                                        Error("Send: " + ex.ToString() + " " + ex.Message + " " + ex.HResult);
                                         connectionTimer.Start();
                                     }
                                 }

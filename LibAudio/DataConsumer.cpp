@@ -117,7 +117,7 @@ void DataConsumer::AudioTask()
 			}
 			if (action->Status == Windows::Foundation::AsyncStatus::Canceled) break;
 		}
-		HeartBeat(HeartBeatType::BUFFERING, 4000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter,
+		HeartBeat(HeartBeatType::BUFFERING, 1000, (int)m_packetCounter, (int)m_discontinuityCounter, (int)m_dataRemovalCounter,
 			0, m_devices[m_params->Device0()].GetPosition(), m_devices[m_params->Device1()].GetPosition());
 	};
 
@@ -262,7 +262,7 @@ bool DataConsumer::ProcessData()
 				HeartBeat(HeartBeatType::INVALID);
 			}
 		}
-		else HeartBeat(HeartBeatType::SILENCE, 2000);
+		else HeartBeat(HeartBeatType::SILENCE, 1000);
 			
 		FlushBuffer();
 		FlushCollector();		
