@@ -1,4 +1,5 @@
 ﻿#define _PI2_1
+#define _DUMMY
 
 using System;
 using Windows.System;
@@ -221,7 +222,11 @@ namespace SDE
                         dummyTimer.Interval = new TimeSpan(0, 0, 1); // 1 s
                         dummyTimer.Tick += (object ss, object ee) =>
                         {
-                            ThreadDelegate(HeartBeatType.DATA, 5, 5, 5, 0, 0, MemoryManager.AppMemoryUsage, 44100, 0);
+                            Random r = new Random();
+                            int cc = (r.Next() % 80) - 40;
+                            ulong len = (ulong)(r.Next() % 32000);
+                            int diff = r.Next() % 3;
+                            ThreadDelegate(HeartBeatType.DATA, cc, cc + diff, cc - diff, 0, len, MemoryManager.AppMemoryUsage, 44100);
                         };
                         dummyTimer.Start();
 #else
