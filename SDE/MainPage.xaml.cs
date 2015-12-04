@@ -1,5 +1,4 @@
 ﻿#define _PI2_1
-#define _DUMMY
 
 using System;
 using Windows.System;
@@ -19,13 +18,14 @@ using LibAudio;
 using Windows.Storage;
 using System.Threading.Tasks;
 using Windows.Storage.Streams;
+using Windows.System.Diagnostics;
+using System.Collections.Generic;
 
 namespace SDE
 {
     public sealed partial class MainPage : Page
     {
-        private Object thisLock = new Object();
-
+        private object thisLock = new object();
         WiFiAdapter wifi = null;
 #if _DUMMY
         private DispatcherTimer dummyTimer = null;
@@ -96,7 +96,19 @@ namespace SDE
             {
                 try
                 {
-                    client.AddMessage(t, i0, i1, i2, i4, i5, beat); 
+                    int ii1 = 0, ii2 = 0, ii3 = 0;
+                    if (t==HeartBeatType.SILENCE)
+                    {
+                        IReadOnlyList<ProcessDiagnosticInfo> list = ProcessDiagnosticInfo.GetForProcesses();
+                        if ( list?.Count > 0)
+                        {
+                            ii1 = (int)list[0].CpuUsage.GetReport().KernelTime.TotalSeconds;
+                            ii2 = (int)list[0].CpuUsage.GetReport().UserTime.TotalSeconds;
+                            ii3 = (int)list[0].MemoryUsage.GetReport().PeakVirtualMemorySizeInBytes;
+                        }
+                        client.AddMessage(t, ii1, ii2, ii3, MemoryManager.AppMemoryUsage, MemoryManager.GetProcessMemoryReport().TotalWorkingSetUsage, beat);
+                    }
+                    else client.AddMessage(t, i0, i1, i2, i4, i5, beat); 
                 }
                 catch (Exception ex)
                 {
@@ -137,10 +149,10 @@ namespace SDE
                     case HeartBeatType.DEVICE_ERROR:
                         rebootPending = true;
                         ResetEngine(10, "ERROR");
-                        return;
+                        break;
                     case HeartBeatType.NODEVICE:
                         rebootPending = true;
-                        return;
+                        break;
                 }
 
                 if (bufferingCount == 60) { rebootPending = true; }
@@ -158,7 +170,8 @@ namespace SDE
                     sampleCount++;       
                 }
                 text9.Text = sampleCount.ToString();
-                AppStatus.Text = bufferingCount.ToString() + " " + networkError.ToString() + " " + rebootPending.ToString() + " " + reboot.ToString() + " " + connectionTimer.IsEnabled.ToString();
+                AppStatus.Text = bufferingCount.ToString() + " " + networkError.ToString() + " " + rebootPending.ToString() + " " 
+                    + connectionTimer.IsEnabled.ToString() + " " + client.Messages().ToString();
             }
             catch (Exception ex)
             {
@@ -331,6 +344,7 @@ namespace SDE
                                                 {
                                                     case AsyncStatus.Completed:
                                                         errorText.Text = client.Sent() + " Messages sent";
+                                                        label0.Text = "";
                                                         networkError = 0;
                                                         if (startCounter > 2) startCounter = 2;
                                                         break;
@@ -343,10 +357,10 @@ namespace SDE
                                                 }
                                                 if (rebootPending) reboot = true;
                                                 wifi.Disconnect();
-                                                wifi = null;           
+                                                wifi = null;
+                                                statusTimer.Stop();
                                             });
-                                        };
-                                        statusTimer.Stop();
+                                        };   
                                         connectionTimer.Start();
                                         client.SendMessagesAsync(handler);
                                         SetStatus("Sending messages ...");
@@ -418,7 +432,7 @@ namespace SDE
                 case HeartBeatType.DEVICE_ERROR:
                 case HeartBeatType.NODEVICE:
                     {
-                        label2.Text = "";
+                        label2.Text = "BEAT";
                         label3.Text = "";
                         label4.Text = "";
                         label5.Text = "";

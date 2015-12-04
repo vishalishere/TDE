@@ -50,6 +50,7 @@ namespace LibIoTHubDebug
         } 
 
         private int MAX_MESSAGES = 10000;
+        private int MAX_BATCH = 1000;
 
         private object thisLock = new object();
         private int msgCount = 0;
@@ -216,6 +217,7 @@ namespace LibIoTHubDebug
                     System.Collections.Generic.Queue<Message> q = new System.Collections.Generic.Queue<Message>();
                     lock (thisLock)
                     {
+                        int i = 0;
                         foreach (DataPoint p in queue)
                         {
                             string s = HeartBeatText(p.t);
@@ -234,13 +236,14 @@ namespace LibIoTHubDebug
                             var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
                             var message = new Message(Encoding.ASCII.GetBytes(messageString));
                             q.Enqueue(message);
+                            if (++i == MAX_BATCH) break;
                         }
-                        msgCount = queue.Count;
+                        msgCount = Math.Min(queue.Count, MAX_BATCH);
                     }
                     var auth = new DeviceAuthenticationWithRegistrySymmetricKey(AccessData.Access.DeviceID, AccessData.Access.DeviceKey);
                     DeviceClient deviceClient = DeviceClient.Create(AccessData.Access.IoTHubUri, auth, TransportType.Http1);
                     await deviceClient.OpenAsync();
-                    Windows.Foundation.IAsyncAction a = deviceClient.SendEventBatchAsync(q);
+                    IAsyncAction a = deviceClient.SendEventBatchAsync(q);
                     a.Completed = handler;
                     await a;
                     await deviceClient.CloseAsync();
