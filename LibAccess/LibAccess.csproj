@@ -7,8 +7,8 @@
     <ProjectGuid>{FC59E403-B886-4322-89CA-0CB709A06931}</ProjectGuid>
     <OutputType>winmdobj</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>AccessData</RootNamespace>
-    <AssemblyName>AccessData</AssemblyName>
+    <RootNamespace>LibAccess</RootNamespace>
+    <AssemblyName>LibAccess</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
     <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
     <TargetPlatformVersion>10.0.10586.0</TargetPlatformVersion>

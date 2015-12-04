@@ -7,6 +7,9 @@ using Windows.Storage.Streams;
 using Windows.Storage;
 using Windows.Foundation;
 
+using LibAccess;
+using LibAudio;
+
 namespace LibIoTHub
 {
     public delegate void MsgHandler(Object o, String s);
@@ -15,7 +18,7 @@ namespace LibIoTHub
     {
         private sealed class DataPoint
         {
-            public LibAudio.HeartBeatType t;
+            public HeartBeatType t;
             public DateTime time;
             public int cc;
             public int asdf;
@@ -38,7 +41,7 @@ namespace LibIoTHub
 
             public void Read(DataReader reader)
             {
-                t = (LibAudio.HeartBeatType)reader.ReadInt32();
+                t = (HeartBeatType)reader.ReadInt32();
                 time = reader.ReadDateTime().UtcDateTime;
                 cc = reader.ReadInt32();
                 asdf = reader.ReadInt32();
@@ -223,7 +226,7 @@ namespace LibIoTHub
                             string s = HeartBeatText(p.t);
                             var telemetryDataPoint = new
                             {
-                                ID = AccessData.Access.DeviceID,
+                                ID = Access.DeviceID,
                                 TIME = p.time,
                                 MSG = s,
                                 CC = p.cc,
@@ -240,8 +243,8 @@ namespace LibIoTHub
                         }
                         msgCount = Math.Min(queue.Count, MAX_BATCH);
                     }
-                    var auth = new DeviceAuthenticationWithRegistrySymmetricKey(AccessData.Access.DeviceID, AccessData.Access.DeviceKey);
-                    DeviceClient deviceClient = DeviceClient.Create(AccessData.Access.IoTHubUri, auth, TransportType.Http1);
+                    var auth = new DeviceAuthenticationWithRegistrySymmetricKey(Access.DeviceID, Access.DeviceKey);
+                    DeviceClient deviceClient = DeviceClient.Create(Access.IoTHubUri, auth, TransportType.Http1);
                     await deviceClient.OpenAsync();
                     IAsyncAction a = deviceClient.SendEventBatchAsync(q);
                     a.Completed = handler;

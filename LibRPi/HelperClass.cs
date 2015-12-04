@@ -5,6 +5,8 @@ using System.Net;
 using Windows.Data.Json;
 using Windows.ApplicationModel.Core;
 
+using LibAccess;
+
 namespace LibRPi
 {
     public sealed class HelperClass
@@ -16,12 +18,12 @@ namespace LibRPi
             StreamReader SR = await PostJsonStreamData(URL);
         }
 
-        public async void Reboot()
+        public /*async*/ void Reboot()
         {
-            String URL = "http://localhost:8080/api/control/reboot";
-            System.Diagnostics.Debug.WriteLine(URL);
-            StreamReader SR = await PostJsonStreamData(URL);
-            //CoreApplication.Exit();
+            //String URL = "http://localhost:8080/api/control/reboot";
+            //System.Diagnostics.Debug.WriteLine(URL);
+            //StreamReader SR = await PostJsonStreamData(URL);
+            CoreApplication.Exit();
         }
 
         private async void StartApp(string appName)
@@ -43,7 +45,7 @@ namespace LibRPi
             {
                 wrGETURL = (HttpWebRequest)WebRequest.Create(URL);
                 wrGETURL.Method = "POST";
-                wrGETURL.Credentials = new NetworkCredential(AccessData.Access.User, AccessData.Access.Password);
+                wrGETURL.Credentials = new NetworkCredential(Access.User, Access.Password);
 
                 HttpWebResponse Response = (HttpWebResponse)(await wrGETURL.GetResponseAsync());
                 if (Response.StatusCode == HttpStatusCode.OK)
@@ -105,7 +107,7 @@ namespace LibRPi
             try
             {
                 wrGETURL = (HttpWebRequest)WebRequest.Create(URL);
-                wrGETURL.Credentials = new NetworkCredential(AccessData.Access.User, AccessData.Access.Password);
+                wrGETURL.Credentials = new NetworkCredential(Access.User, Access.Password);
                 HttpWebResponse Response = (HttpWebResponse)(await wrGETURL.GetResponseAsync());
                 if (Response.StatusCode == HttpStatusCode.OK)
                 {

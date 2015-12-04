@@ -3,12 +3,21 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Devices;
-using Microsoft.Azure.Devices.Common.Exceptions;
 using Microsoft.ServiceBus.Messaging;
 
 namespace IoTHub
 {
+    public sealed class Access
+    {
+        static string iotHubUri = "{XXX}";
+        static string connectionString = "{XXX}";
+        static string deviceId = "{XXX}";
+
+        public static string IoTHubUri { get { return iotHubUri; } }
+        public static string DeviceID { get { return deviceId; } }
+        public static string ConnectionString { get { return connectionString; } }
+    }
+
     class Program
     {
 #if CREATE_NEW_DEVICE
@@ -26,7 +35,7 @@ namespace IoTHub
             Console.ReadLine();
 #else
             Console.WriteLine("Receive messages\n");
-            eventHubClient = EventHubClient.CreateFromConnectionString(Access.Access.ConnectionString, iotHubD2cEndpoint);
+            eventHubClient = EventHubClient.CreateFromConnectionString(Access.ConnectionString, iotHubD2cEndpoint);
 
             var d2cPartitions = eventHubClient.GetRuntimeInformation().PartitionIds;
 

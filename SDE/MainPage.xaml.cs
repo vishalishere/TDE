@@ -13,13 +13,14 @@ using Windows.Devices.Enumeration;
 using Windows.Foundation;
 using Windows.Security.Credentials;
 
-using AccessData;
-using LibAudio;
 using Windows.Storage;
 using System.Threading.Tasks;
 using Windows.Storage.Streams;
 using Windows.System.Diagnostics;
 using System.Collections.Generic;
+
+using LibAccess;
+using LibAudio;
 
 namespace SDE
 {
@@ -32,7 +33,7 @@ namespace SDE
 #else
         private WASAPIEngine engine;
 #endif
-        private LibIoTHubDebug.IotHubClient client = new LibIoTHubDebug.IotHubClient();
+        private LibIoTHub.IotHubClient client = new LibIoTHub.IotHubClient();
 
         private DispatcherTimer startTimer = new DispatcherTimer();
         private DispatcherTimer sendDelayTimer = new DispatcherTimer();

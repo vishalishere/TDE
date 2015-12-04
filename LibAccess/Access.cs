@@ -1,6 +1,6 @@
 ﻿#define _PI2_1
 
-namespace AccessData
+namespace LibAccess
 {
     public sealed class Access
     {
