@@ -136,10 +136,6 @@
       <Project>{6d016b27-6145-474b-b8f1-55741ca0eee7}</Project>
       <Name>LibAudio</Name>
     </ProjectReference>
-    <ProjectReference Include="..\LibIoTHubDebug\LibIoTHubDebug.csproj">
-      <Project>{76dfa2ae-69f7-45c1-bfe7-2e8e6e66745e}</Project>
-      <Name>LibIoTHubDebug</Name>
-    </ProjectReference>
     <ProjectReference Include="..\LibRPi\LibRPi.csproj">
       <Project>{e11de85b-f1b9-4140-bd9a-b0de9a97603b}</Project>
       <Name>LibRPi</Name>
