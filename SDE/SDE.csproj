@@ -128,7 +128,7 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AccessData\LibAccess.csproj">
+    <ProjectReference Include="..\LibAccess\LibAccess.csproj">
       <Project>{fc59e403-b886-4322-89ca-0cb709a06931}</Project>
       <Name>LibAccess</Name>
     </ProjectReference>

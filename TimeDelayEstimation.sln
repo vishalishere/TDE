@@ -36,7 +36,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibIoTHub", "LibIoTHub\LibI
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SDE", "SDE\SDE.csproj", "{CC46CFC2-C82C-4369-9400-34ECD8ABC01E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibAccess", "AccessData\LibAccess.csproj", "{FC59E403-B886-4322-89CA-0CB709A06931}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibAccess", "LibAccess\LibAccess.csproj", "{FC59E403-B886-4322-89CA-0CB709A06931}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
