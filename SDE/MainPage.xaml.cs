@@ -1,6 +1,4 @@
-﻿#define _PI2_1
-
-using System;
+﻿using System;
 using Windows.System;
 using Windows.UI;
 using Windows.UI.Core;
@@ -156,7 +154,7 @@ namespace SDE
                         break;
                 }
 
-                if (bufferingCount == 60) { rebootPending = true; }
+                if (bufferingCount == 30) { rebootPending = true; }
                 else if (bufferingCount >= 10 && bufferingCount % 10 == 0) { ResetEngine(10, "RESET"); }
                 
                 if (t != HeartBeatType.BUFFERING) canvas.Children.Clear();
