@@ -248,13 +248,7 @@ namespace SDE
 #if _WIN64
                         TDEParameters param = new TDEParameters(1, 0, 0, 0, 1);
 #else
-#if _PI2_1
-                        TDEParameters param = new TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 500, 32000, -60, false, "");
-#elif _PI2_2
-                        TDEParameters param = new TDEParameters(1, 0, 0, 3, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
-#else
-                        TDEParameters param = new TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 2000, 32000, -60, false, "");
-#endif
+                        TDEParameters param = new TDEParameters(2, 0, 1, 0, 0, 44100, 300, 50, 500, 32000, -200, false, "");
 #endif
                         await engine.InitializeAsync(ThreadDelegate, param);
 #endif
@@ -303,6 +297,7 @@ namespace SDE
                     wifi = await WiFiAdapter.FromIdAsync(wifiDevices[0].Id);
 
                     await WriteStatus(true);
+                    await client.SaveQueueAsync();
 
                     SetStatus("ScanAsync");
                     IAsyncAction a = wifi?.ScanAsync();
